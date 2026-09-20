@@ -1,0 +1,30 @@
+﻿import { UIBaseContainer }  from "./UIBaseContainer"
+import { UIManager } from "./UIManager";
+
+export abstract class UIBaseView extends UIBaseContainer {
+
+    public get canBack(): boolean{
+        return false;
+    }
+    
+    /**
+     * 关闭自身
+     */
+    public async closeSelf(): Promise<void>
+    {
+        var close = await UIManager.instance.closeBox(this);
+        if(!close) await UIManager.instance.closeWindow(this);
+    }
+
+    public onInputKeyBack(): Promise<void>
+    {
+        return this.closeSelf();
+    }
+}
+
+export function UIView(name: string) {
+    return function <T extends new () => UIBaseView>(target: T): T {
+        UIManager?.register(name, target);
+        return target;
+    };
+}

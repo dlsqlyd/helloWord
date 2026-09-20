@@ -1,0 +1,82 @@
+import { sys } from "cc";
+import { IManager } from "../../../Mono/Core/Manager/IManager"
+import { JsonHelper } from "../../../Mono/Helper/JsonHelper";
+import * as string from "../../../Mono/Helper/StringHelper";
+export class CacheManager implements IManager {
+
+    private static _instance: CacheManager;
+
+    public static get instance(): CacheManager {
+        return CacheManager._instance;
+    }
+
+    private cacheObj: Map<string, any>
+
+    public init() {
+        this.cacheObj = new Map<string, any>();
+        CacheManager._instance = this;
+    }
+    public destroy() {
+        CacheManager._instance = null;
+    }
+
+
+    public getString(key: string, defaultValue: string = null): string
+    {
+        var res = sys.localStorage.getItem(key);
+        if(!res) res = defaultValue
+        return res
+    }
+    
+    public getInt(key: string, defaultValue: number = 0): number
+    {
+        const str = sys.localStorage.getItem(key);
+        if(!string.isNullOrEmpty(str)){
+            const val = Number.parseInt(str);
+            if(val != null && !Number.isNaN(val)){
+                return val;
+            }
+        }
+        return defaultValue;
+    }
+    
+    public getValue<T extends object>(type: new (...args:any[]) => T,key: string): T
+    {
+        let data:any = this.cacheObj.get(key);
+        if (!!data)
+        {
+            return data as T;
+        }
+        var jStr = sys.localStorage.getItem(key);
+        if (jStr == null) return null;
+        var res = JsonHelper.fromJson<T>(type,jStr);
+        this.cacheObj.set(key,res);
+        return res;
+    }
+    
+    public setString(key: string, value: string)
+    {
+        sys.localStorage.setItem(key, value);
+    }
+    
+    public setInt(key: string, value: number)
+    {
+        sys.localStorage.setItem(key, String(value));
+    }
+    
+    public setValue<T extends object>(key: string, value: T)
+    {
+        this.cacheObj.set(key,value);
+        var jStr = JsonHelper.toJson(value);
+        sys.localStorage.setItem(key, jStr);
+    }
+
+    public deleteKey(key: string)
+    {
+        if (this.cacheObj.has(key))
+        {
+            this.cacheObj.delete(key);
+        }
+        sys.localStorage.removeItem(key);
+    }
+}

@@ -1,0 +1,84 @@
+{
+    "$schema": "./@types/schema/package/index.json",
+    "package_version": 2,
+    "name": "taowu-editor",
+    "version": "1.0.0",
+    "author": "Cocos Creator",
+    "editor": ">=3.8.5",
+    "scripts": {
+        "preinstall": "node ./scripts/preinstall.js",
+        "build": "tsc",
+        "watch": "tsc -w"
+    },
+    "description": "",
+    "main": "./dist/main.js",
+    "devDependencies": {
+        "@cocos/creator-types": "^3.8.5",
+        "@types/fs-extra": "^5.0.4",
+        "@types/node": "^18.17.1",
+        "javascript-obfuscator": "^5.4.3",
+        "typescript": "^5.8.2"
+    },
+    "contributions": {
+        "assets": {
+            "menu": {
+                "methods": "./dist/assets-editor.js",
+                "assetMenu": "onAssetMenu"
+            }
+        },
+        "hierarchy":{
+            "menu": {
+                "methods": "./dist/hierarchy-editor.js",
+                "nodeMenu": "onNodeMenu",
+                "panelMenu": "onPanelMenu"
+            }
+        },
+        "menu": [
+            {
+                "path": "Tools/工具/UI",
+                "label": "一键设置UI文件夹为AB包",
+                "message": "settingUIAB"
+            },
+            {
+                "path": "Tools/工具/UI",
+                "label": "批量设置图片格式",
+                "message": "setImagesFormat"
+            },
+            {
+                "path": "Tools/帮助",
+                "label": "启动场景(Shift+B)",
+                "message": "changeInitScene"
+            }
+        ],
+        "messages": {
+            "settingUIAB": {
+                "methods": [
+                    "settingUIAB"
+                ]
+            },
+            "setImagesFormat": {
+                "methods": [
+                    "setImagesFormat"
+                ]
+            },
+            "changeInitScene": {
+                "methods": [
+                    "changeInitScene"
+                ]
+            },
+            "asset-db:asset-add":{
+                "methods": [
+                    "onAssetAdd"
+                ]
+            }
+        }, 
+        "shortcuts": [
+            {
+                "message": "changeInitScene",
+                "win": "shift+b",
+                "mac": "shift+b"
+            }
+        ],
+        "builder": "./dist/builder.js"
+    }
+}

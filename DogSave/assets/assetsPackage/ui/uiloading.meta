@@ -1,0 +1,47 @@
+{
+  "ver": "1.2.0",
+  "importer": "directory",
+  "imported": true,
+  "uuid": "f521a5e6-0c70-4e86-967f-9ad74ba3c919",
+  "files": [],
+  "subMetas": {},
+  "userData": {
+    "bundleName": "ui_uiloading",
+    "bundleFilterConfig": [
+      {
+        "range": "include",
+        "type": "url",
+        "patchOption": {
+          "patchType": "glob",
+          "value": "db://assets/assetsPackage/ui/uiloading/prefabs/**/*.prefab"
+        },
+        "assets": [
+          ""
+        ]
+      },
+      {
+        "range": "include",
+        "type": "url",
+        "patchOption": {
+          "patchType": "glob",
+          "value": "db://assets/assetsPackage/ui/uiloading/discreteImages/**/*"
+        },
+        "assets": [
+          ""
+        ]
+      },
+      {
+        "range": "include",
+        "type": "url",
+        "patchOption": {
+          "patchType": "glob",
+          "value": "db://assets/assetsPackage/ui/uiloading/atlas/**/*"
+        },
+        "assets": [
+          ""
+        ]
+      }
+    ],
+    "isBundle": true
+  }
+}
