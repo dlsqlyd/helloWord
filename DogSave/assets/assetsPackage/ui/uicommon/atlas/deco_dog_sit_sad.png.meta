@@ -1,0 +1,138 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "3eee1586-9720-4927-9c65-213e02ef1367",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "3eee1586-9720-4927-9c65-213e02ef1367@6c48a",
+      "displayName": "deco_dog_sit_sad",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "3eee1586-9720-4927-9c65-213e02ef1367",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "3eee1586-9720-4927-9c65-213e02ef1367@f9941",
+      "displayName": "deco_dog_sit_sad",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": -40,
+        "offsetY": 32,
+        "trimX": 7,
+        "trimY": 16,
+        "width": 106,
+        "height": 104,
+        "rawWidth": 200,
+        "rawHeight": 200,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -53,
+            -52,
+            0,
+            53,
+            -52,
+            0,
+            -53,
+            52,
+            0,
+            53,
+            52,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            7,
+            184,
+            113,
+            184,
+            7,
+            80,
+            113,
+            80
+          ],
+          "nuv": [
+            0.035,
+            0.4,
+            0.565,
+            0.4,
+            0.035,
+            0.92,
+            0.565,
+            0.92
+          ],
+          "minPos": [
+            -53,
+            -52,
+            0
+          ],
+          "maxPos": [
+            53,
+            52,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "3eee1586-9720-4927-9c65-213e02ef1367@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "3eee1586-9720-4927-9c65-213e02ef1367@6c48a",
+    "compressSettings": {
+      "useCompressTexture": true,
+      "presetId": "91I12GucVJMaomwAqK5UYN"
+    }
+  }
+}
