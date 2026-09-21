@@ -3,6 +3,7 @@ import { UILayerNames } from "../../Module/UI/UILayerNames";
 import { UIManager } from "../../Module/UI/UIManager";
 import { UILoadingView } from "../UI/UILoading/UILoadingView";
 import { UIMainView } from "../UI/UIMain/UIMainView";
+import { UIGameMainView } from "../UI/UIGameMain/UIGameMainView";
 
 export class LoginScene implements IScene
 {
@@ -85,7 +86,8 @@ export class LoginScene implements IScene
      * 转场景结束
      */
     public async onSwitchSceneEnd(): Promise<void>{
-        await UIManager.instance.openWindow(UIMainView,UIMainView.PrefabPath);
+        // await UIManager.instance.openWindow(UIMainView,UIMainView.PrefabPath);
+        await UIManager.instance.openWindow(UIGameMainView,UIGameMainView.PrefabPath);
         await UIManager.instance.destroyWindow<UILoadingView>(UILoadingView);
         this.win = null;
     }

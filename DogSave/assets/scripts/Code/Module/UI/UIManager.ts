@@ -689,9 +689,10 @@ export class UIManager implements IManager {
     {
         const view = target.view;
         var go = await GameObjectPoolManager.instance.getGameObjectAsync(path);
+        Log.error(`UIManager InnerOpenWindow ${target.prefabPath} , ${path} fail`);
         if (go == null)
         {
-            Log.error(`UIManager InnerOpenWindow ${target.prefabPath} fail`);
+            Log.error(`UIManager InnerOpenWindow ${target.prefabPath} , ${path} fail`);
             return false;
         }
         var node: Node = go;
