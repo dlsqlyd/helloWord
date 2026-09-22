@@ -1,3 +1,4 @@
+import { Label, Node, find, math, RichText, Tween, tween } from "cc";
 import { LoopGridView } from "../../../../ThirdParty/SuperScrollView/GridView/LoopGridView";
 import { LoopGridViewItem } from "../../../../ThirdParty/SuperScrollView/GridView/LoopGridViewItem";
 import { LoopListView2 } from "../../../../ThirdParty/SuperScrollView/ListView/LoopListView2";
@@ -16,6 +17,7 @@ import { CellItem } from "./CellItem";
 import { DateItem } from "./DateItem";
 
 
+
 @UIView("UIGameMainView")
 export class UIGameMainView extends UIBaseView implements IOnCreate, IOnEnable, IOnWidthPaddingChange{
 
@@ -30,10 +32,10 @@ export class UIGameMainView extends UIBaseView implements IOnCreate, IOnEnable, 
         return true;
     }
 
-    public image: UIImage;
-	public text: UIText;
-    public menu: UIMenu
-
+    // public image: UIImage;
+	// public text: UIText;
+    // public menu: UIMenu
+     
     public loopGridView: UILoopGridView;
     public loopListView2: UILoopListView2;
     public welcome: UIEmptyView;
@@ -51,21 +53,12 @@ export class UIGameMainView extends UIBaseView implements IOnCreate, IOnEnable, 
 
     public onCreate()
     {
-        this.image = this.addComponent<UIImage>(UIImage,"Image");
-		this.text = this.addComponent<UIText>(UIText,"Text");
-		// this.menu = this.addComponent<UIMenu>(UIMenu,"UIMenu");
-        
-
-        // //模拟读配置
-        // const paras: MenuPara[] = [];
-        // for (const [id, name] of this.config) {
-        //     const menuPara = new MenuPara();
-        //     menuPara.id = id;
-        //     menuPara.name = name;
-        //     paras[paras.length] = menuPara;
-        // }
-        
-        // this.menu.setData(paras, this.onMenuIndexChanged.bind(this));
+        if (this.node != null)
+        {
+            Node tempNode = find("bg/TopNode/levelBg/level_txt");
+            Label levelText = tempNode.getComponent(Label);
+		    levelText.string = "第XX关";
+        }
     }
 
 

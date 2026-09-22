@@ -4,8 +4,8 @@ import { FORCE_UPDATE } from 'cc/userland/macro';
 
 export class Define {
 
-    private static readonly dWidth = 768;
-    private static readonly dHeight = 1366;
+    private static readonly dWidth = 1080;
+    private static readonly dHeight = 1920;
 
     public static isSH: boolean = false;
 
