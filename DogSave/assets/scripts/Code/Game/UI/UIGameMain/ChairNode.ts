@@ -1,21 +1,41 @@
-import { IOnCreate } from "../../../Module/UI/IOnCreate";
-import { UIBaseContainer } from "../../../Module/UI/UIBaseContainer";
-import { UIText } from "../../../Module/UIComponent/UIText";
+import { _decorator, Button, Component, Label, Node } from 'cc';
+import { DogNode, DogColor } from './DogNode';
+const { ccclass, property } = _decorator;
 
-export class ChairNode extends UIBaseContainer implements IOnCreate{
+@ccclass('ChairNode')
+export class ChairNode extends Component {
+      
+    @property(Label)
+    public levelText: Label;
+    
+    @property(Button)
+    public settingBtn: Button;
 
-    public getConstructor()
-    {
-        return ChairNode;
+    @property(Node)
+    public sortlist:Node[] = [];
+
+    @property(DogNode)
+    public sortDog:DogNode[] = [];
+
+    start() {
+        for (let i = 0; i < this.sortDog.length; ++i)
+        {
+            this.sortDog[i].SlotIdx = i+1;
+        }
     }
 
-    private text: UIText
-    public onCreate(){
-        this.text = this.addComponent(UIText,"Text");
+    update(deltaTime: number) {
+        
     }
 
-    public setData(time: Date)
+    public RefreshAllSlot()
     {
-        this.text.setText(time.getDate().toString());
+
+    }
+
+    public RefreshOneSlot(slotIndx:Number, color:DogColor)
+    {
+        
     }
 }
+

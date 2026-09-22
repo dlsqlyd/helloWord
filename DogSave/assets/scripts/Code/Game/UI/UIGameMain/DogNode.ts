@@ -1,21 +1,54 @@
-import { IOnCreate } from "../../../Module/UI/IOnCreate";
-import { UIBaseContainer } from "../../../Module/UI/UIBaseContainer";
-import { UIText } from "../../../Module/UIComponent/UIText";
+import { _decorator, Button, Component, Label, Node, Sprite } from 'cc';
+const { ccclass, property } = _decorator;
 
-export class DogNode extends UIBaseContainer implements IOnCreate{
+// 枚举定义
+export enum DogState {
+    None, //空白
+    Idle, //待机备选
+    InSelect, //选中悬浮中
+    FlyToFriend, //飞向右方
+    FlyToDoor, //飞向车门
+}
 
-    public getConstructor()
-    {
-        return DogNode;
+export enum DogColor {
+    None = 0,
+    Orange = 1,// 1	橙色	
+    Pink = 2, // 2	粉色	
+    Blue = 3,// 3	蓝色	
+    Green = 4,// 4	绿色	
+    Purple = 5,// 5	紫色	
+    Yellow = 6,// 6	黄色	
+    Mint = 7, // 7	薄荷绿	
+    Grey = 8,// 8	灰色	
+}
+
+@ccclass('DogNode')
+export class DogNode extends Component {
+      
+    @property(Sprite)
+    public dogIcon: Sprite;
+    
+    public DogState = DogState.None;
+    public DogColor = DogColor.None;
+    public SlotIdx:number;
+   
+
+    start() {
+
     }
 
-    private text: UIText
-    public onCreate(){
-        this.text = this.addComponent(UIText,"Text");
+    update(deltaTime: number) {
+        
     }
 
-    public setData(time: Date)
+    public CreateDog(color: DogColor)
     {
-        this.text.setText(time.getDate().toString());
+        this.DogColor = color;
+        this.DogState = DogState.Idle;
+    }
+
+    public SetDogState()
+    {
+
     }
 }

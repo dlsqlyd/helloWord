@@ -1,8 +1,8 @@
 import { _decorator, Button, Component, Label, Node } from 'cc';
 const { ccclass, property } = _decorator;
 
-@ccclass('DoorNode')
-export class DoorNode extends Component {
+@ccclass('GameMainObj')
+export class GameMainObj extends Component {
       
     @property(Label)
     public levelText: Label;
@@ -18,3 +18,4 @@ export class DoorNode extends Component {
         
     }
 }
+

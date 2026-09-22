@@ -41,9 +41,7 @@ export class UIGameMainView extends UIBaseView implements IOnCreate, IOnEnable, 
     public welcome: UIEmptyView;
 
     public curId: number;
-
-    public firstDay: Date;
-	public totalDay: number;
+  
 
     private config: Map<number,string> =new Map<number,string>([
         [1, "欢迎"],
@@ -53,12 +51,9 @@ export class UIGameMainView extends UIBaseView implements IOnCreate, IOnEnable, 
 
     public onCreate()
     {
-        if (this.node != null)
-        {
-            Node tempNode = find("bg/TopNode/levelBg/level_txt");
-            Label levelText = tempNode.getComponent(Label);
-		    levelText.string = "第XX关";
-        }
+        let tempNode = find("bg/TopNode/levelBg/level_txt", this.node);
+        this.levelText = tempNode.getComponent<Label>(Label);
+        this.levelText.string = "第XX关";
     }
 
 
@@ -77,38 +72,5 @@ export class UIGameMainView extends UIBaseView implements IOnCreate, IOnEnable, 
    
     public refreshItemSpaceShow()
     {
-        // var conf = this.config.get(this.curId);
-        // this.text.setText(conf);
-        // switch (this.curId)
-        // {
-        //     case 1:
-        //         this.welcome.setActive(true);
-        //         this.loopGridView.setActive(false);
-        //         this.loopListView2.setActive(false);
-        //         break;
-        //     case 2:
-        //         this.welcome.setActive(false);
-        //         this.loopGridView.setActive(true);
-        //         this.loopListView2.setActive(false);
-        //         const dtNow: Date = new Date();     
-        //         this.firstDay = new Date(dtNow.getFullYear(), dtNow.getMonth(), 1); 
-        //         const days = this.getDaysInCurrentMonth(dtNow.getFullYear(), dtNow.getMonth());
-        //         this.totalDay = days + this.firstDay.getDay();
-        //         this.loopGridView.setListItemCount(this.totalDay);
-        //         this.loopGridView.refreshAllShownItem();
-        //         break;
-        //     case 3:
-        //         this.welcome.setActive(false);
-        //         this.loopGridView.setActive(false);
-        //         this.loopListView2.setActive(true);
-        //         this.loopListView2.setListItemCount(200);//无限列表需要修改编译ScrollView引擎源码以支持修改滑动速度,否则滑动惯性会有问题
-        //         this.loopListView2.refreshAllShownItem();
-        //         break;
-        //     default:
-        //         this.welcome.setActive(false);
-        //         this.loopGridView.setActive(false);
-        //         this.loopListView2.setActive(false);
-        //         break;
-        // }
     }      
 }

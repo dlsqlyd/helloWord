@@ -1,21 +1,20 @@
-import { IOnCreate } from "../../../Module/UI/IOnCreate";
-import { UIBaseContainer } from "../../../Module/UI/UIBaseContainer";
-import { UIText } from "../../../Module/UIComponent/UIText";
+import { _decorator, Button, Component, Label, Node } from 'cc';
+const { ccclass, property } = _decorator;
 
-export class RoomNode extends UIBaseContainer implements IOnCreate{
+@ccclass('RoomNode')
+export class RoomNode extends Component {
+      
+    @property(Label)
+    public levelText: Label;
+    
+    @property(Button)
+    public settingBtn: Button;
 
-    public getConstructor()
-    {
-        return RoomNode;
+    start() {
+
     }
 
-    private text: UIText
-    public onCreate(){
-        this.text = this.addComponent(UIText,"Text");
-    }
-
-    public setData(time: Date)
-    {
-        this.text.setText(time.getDate().toString());
+    update(deltaTime: number) {
+        
     }
 }

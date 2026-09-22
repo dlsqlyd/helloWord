@@ -17,7 +17,7 @@ export abstract class UIBaseContainer {
     private length: number = 0;
     private transform: UITransform;
     private rectTransform: RectTransform;
-    private node : Node;
+    public node : Node;
     private parentNode : Node;
     private path: string;
     private timerId: bigint = 0n;
