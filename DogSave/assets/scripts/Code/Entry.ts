@@ -21,6 +21,7 @@ import { ServerConfigManager } from "./Module/Update/ServerConfigManager"
 import { UIUpdateView } from "./Game/UI/UIUpdate/UIUpdateView"
 import { UILayerNames } from "./Module/UI/UILayerNames"
 import { Define } from "../Mono/Define"
+import { GameDataManager } from "./Game/GameDataManager";
 
 @ccclass('Entry')
 export class Entry 
@@ -79,6 +80,7 @@ export class Entry
         ManagerProvider.registerManager(CameraManager);
         ManagerProvider.registerManager(SceneManager);
         ManagerProvider.registerManager(SoundManager);
+        ManagerProvider.registerManager(GameDataManager);
         await SceneManager.instance.switchScene(LoginScene);
     }
 }

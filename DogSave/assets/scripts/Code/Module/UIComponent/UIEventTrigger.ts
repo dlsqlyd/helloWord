@@ -18,7 +18,7 @@ export enum EventTriggerType {
     Scroll = 'scroll',
     InitializePotentialDrag = 'initialize-potential-drag',
     BeginDrag = 'begin-drag',
-    EndDrag = 'end-drag'
+    EndDrag = 'end-drag',
 }
 
 export class UIEventTrigger extends UIBaseContainer implements IOnDestroy, IOnCreate{

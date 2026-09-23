@@ -239,6 +239,9 @@
     "__prefab": {
       "__id__": 11
     },
+    "dogIcon": {
+      "__id__": 5
+    },
     "_id": ""
   },
   {
@@ -254,6 +257,7 @@
       "__id__": 0
     },
     "fileId": "57+hJa4sxDCpzE6HeEDsg5",
+    "instance": null,
     "targetOverrides": null
   }
 ]

@@ -1,4 +1,5 @@
 import { _decorator, Button, Component, Label, Node, Sprite } from 'cc';
+import { ImageLoaderManager } from '../../../Module/Resource/ImageLoaderManager';
 const { ccclass, property } = _decorator;
 
 // 枚举定义
@@ -44,11 +45,70 @@ export class DogNode extends Component {
     public CreateDog(color: DogColor)
     {
         this.DogColor = color;
-        this.DogState = DogState.Idle;
+        if (color > DogColor.None)
+        {
+            this.RefreshDogState(DogState.Idle);
+            this.RfreshDogSprite();
+        }
+        else
+        {
+            this.DogState = DogState.None;
+            this.RfreshDogSprite();
+        }
     }
 
-    public SetDogState()
+    public async RfreshDogSprite()
     {
+        let imgPath:string = "ui/uigamemain/atlas/";   
+        let icon:string = "battle_alpha";  
+        switch(this.DogColor)
+        {
+            case DogColor.Orange:
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_orange" : "dogface_sad_orange";
+                break;
+            case DogColor.Pink:
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_pink" : "dogface_sad_pink";
+                break;
+            case DogColor.Blue:
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_blue" : "dogface_sad_blue";
+                break;
+            case DogColor.Green:
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_green" : "dogface_sad_green";
+                break;
+            case DogColor.Purple:
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_purple.png" : "dogface_sad_purple.png";
+                break;
+            case DogColor.Yellow:
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_yellow.png" : "dogface_sad_yellow.png";
+                break;
+            case DogColor.Mint:
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_mint.png" : "dogface_sad_mint.png";
+                break;
+            case DogColor.Grey:
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_grey.png" : "dogface_sad_grey.png";
+                break;
+            case DogColor.None:
+                icon = "battle_alpha";  
+                break
+        } 
+        var sprite = await ImageLoaderManager.instance.loadSpriteAsync(imgPath + icon);      
+        this.dogIcon.spriteFrame = sprite;
+    }
 
+
+    public RefreshDogState(state:DogState)
+    {
+        this.DogState = state;
+        switch(this.DogState)
+        {
+            case DogState.Idle:
+                break;
+            case DogState.InSelect:
+                break;
+            case DogState.FlyToFriend:
+                break;
+            case DogState.FlyToDoor:
+                break;
+        }
     }
 }

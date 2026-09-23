@@ -51,9 +51,9 @@ export class UIGameMainView extends UIBaseView implements IOnCreate, IOnEnable, 
 
     public onCreate()
     {
-        let tempNode = find("bg/TopNode/levelBg/level_txt", this.node);
-        this.levelText = tempNode.getComponent<Label>(Label);
-        this.levelText.string = "第XX关";
+        // let tempNode = find("bg/TopNode/levelBg/level_txt", this.node);
+        // this.levelText = tempNode.getComponent<Label>(Label);
+        // this.levelText.string = "第XX关";
     }
 
 

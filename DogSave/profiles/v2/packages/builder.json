@@ -23,7 +23,7 @@
         "type": "build",
         "id": "1780668433926",
         "progress": 0.23333333333333334,
-        "state": "processing",
+        "state": "failure",
         "stage": "make",
         "message": "native:(make) start...",
         "detailMessage": "[runCmd gradlew.bat] .\r",

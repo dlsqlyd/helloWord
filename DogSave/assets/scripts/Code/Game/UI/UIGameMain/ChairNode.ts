@@ -1,15 +1,21 @@
 import { _decorator, Button, Component, Label, Node } from 'cc';
-import { DogNode, DogColor } from './DogNode';
+import { DogNode, DogColor, DogState } from './DogNode';
 const { ccclass, property } = _decorator;
+
+export enum ChairState {
+    None, //空白
+    Lock, //等待广告解锁
+    Idle, //等待选择状态
+    InSelect, //选中悬浮中
+    FlyToFriend, //飞向右方
+    FlyToDoor, //飞向车门
+}
 
 @ccclass('ChairNode')
 export class ChairNode extends Component {
       
-    @property(Label)
-    public levelText: Label;
-    
-    @property(Button)
-    public settingBtn: Button;
+    @property(Node)
+    public touchNode:Node
 
     @property(Node)
     public sortlist:Node[] = [];
@@ -17,25 +23,58 @@ export class ChairNode extends Component {
     @property(DogNode)
     public sortDog:DogNode[] = [];
 
+    @property(Button)
+    public adsBtn: Button;
+
+    @property(Boolean)
+    public isFlip: Boolean;
+
+    public chairState:ChairState = ChairState.None;
+
     start() {
         for (let i = 0; i < this.sortDog.length; ++i)
         {
-            this.sortDog[i].SlotIdx = i+1;
+            if (this.isFlip)
+                this.sortDog[this.sortDog.length - i - 1].SlotIdx = i+1;
+            else
+                this.sortDog[i].SlotIdx = i+1;
         }
+        this.touchNode.on(Node.EventType.TOUCH_END, (event) => {
+            console.log('Mouse down');
+        }, this);
     }
 
     update(deltaTime: number) {
         
     }
 
-    public RefreshAllSlot()
+    public RefreshAllSlot(dogs:number[])
     {
-
+        this.adsBtn.node.active = false;
+        this.chairState = ChairState.Idle;
+        for (let i = 0; i < this.sortDog.length; i++)
+        {
+            if (this.isFlip)
+                this.sortDog[this.sortDog.length - i - 1].CreateDog(dogs[i]);
+            else
+                this.sortDog[i].CreateDog(dogs[i]);
+        }
     }
 
-    public RefreshOneSlot(slotIndx:Number, color:DogColor)
+    public RefreshOneSlotColor(slotIndx:Number, color:DogColor)
     {
         
+    }
+
+    public RefreshOneSlotState(slotIndx:Number, state:DogState)
+    {
+        
+    }
+
+    public ShowAdsBtn()
+    {
+        this.adsBtn.node.active = true;
+        this.chairState = ChairState.Lock;
     }
 }
 
