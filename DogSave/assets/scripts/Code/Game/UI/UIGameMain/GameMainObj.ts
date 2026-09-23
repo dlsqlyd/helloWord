@@ -17,6 +17,7 @@ export class GameMainObj extends Component {
     public chairNodes:ChairNode[] = [];
 
     start() {
+        GameDataManager.instance.gameMainObj = this;
         this.levelText.string = `第${GameDataManager.instance.curFightLevelId}关`;
         let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
         for (let i = 0; i < this.chairNodes.length; i++)

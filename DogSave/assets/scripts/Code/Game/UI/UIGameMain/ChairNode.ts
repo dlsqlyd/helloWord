@@ -1,5 +1,6 @@
 import { _decorator, Button, Component, Label, Node } from 'cc';
 import { DogNode, DogColor, DogState } from './DogNode';
+import { GameDataManager } from '../../GameDataManager';
 const { ccclass, property } = _decorator;
 
 export enum ChairState {
@@ -41,8 +42,19 @@ export class ChairNode extends Component {
         }
         this.touchNode.on(Node.EventType.TOUCH_END, (event) => {
             console.log('Mouse down');
+            GameDataManager.instance.SetLevelCfgById(GameDataManager.instance.curFightLevelId+1);
+
         }, this);
     }
+
+    public FlyAir()
+    {}
+
+    public FlyToNear()
+    {}
+
+    public FlyToDoor()
+    {}
 
     update(deltaTime: number) {
         

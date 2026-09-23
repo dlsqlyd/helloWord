@@ -5,6 +5,8 @@ import { DateItem } from './UI/UIMain/DateItem';
 import { CacheManager } from '../Module/Player/CacheManager';
 import { ConfigManager } from '../Module/Config/ConfigManager';
 import { Log } from '../../Mono/Module/Log/Log';
+import { GameMainObj } from './UI/UIGameMain/GameMainObj';
+import { ready } from '../../../../extensions/taowu-editor/source/panel';
 
 
 @JsonType("LevelDatas")
@@ -39,6 +41,7 @@ export class GameDataManager implements IManager {
     public curFightLevelId:number = 1;
     private curSelectChairIdx:number = -1;
     public curLevelConfig:LevelConfig;
+    public gameMainObj:GameMainObj;
 
 
     public static get instance(): GameDataManager {
@@ -120,8 +123,9 @@ export class GameDataManager implements IManager {
         this.curFightLevelId = levelId;
         if (this.curFightLevelId > this.datas.data.length)
             this.curFightLevelId = this.datas.data.length;
-        this.curLevelConfig = GameDataManager.instance.GetLevelCfgById(this.curFightLevelId).clone();
+        this.curLevelConfig = this.CloneLevelCfg(GameDataManager.instance.GetLevelCfgById(this.curFightLevelId));
         CacheManager.instance.setInt("FightLevelId", levelId)
+        this.gameMainObj.start();
     }
 
     public SetSelectChairId(chairId:number)

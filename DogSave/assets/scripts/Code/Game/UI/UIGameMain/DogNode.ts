@@ -76,16 +76,16 @@ export class DogNode extends Component {
                 icon = this.DogState == DogState.FlyToDoor ? "dogface_green" : "dogface_sad_green";
                 break;
             case DogColor.Purple:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_purple.png" : "dogface_sad_purple.png";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_purple" : "dogface_sad_purple";
                 break;
             case DogColor.Yellow:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_yellow.png" : "dogface_sad_yellow.png";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_yellow" : "dogface_sad_yellow";
                 break;
             case DogColor.Mint:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_mint.png" : "dogface_sad_mint.png";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_mint" : "dogface_sad_mint";
                 break;
             case DogColor.Grey:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_grey.png" : "dogface_sad_grey.png";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_grey" : "dogface_sad_grey";
                 break;
             case DogColor.None:
                 icon = "battle_alpha";  
