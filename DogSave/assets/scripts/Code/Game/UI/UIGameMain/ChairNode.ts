@@ -3,6 +3,9 @@ import { DogNode, DogColor, DogState } from './DogNode';
 import { GameDataManager } from '../../GameDataManager';
 const { ccclass, property } = _decorator;
 
+// 同一根椅子上相邻两只狗的出生间隔（秒），让整列自下而上依次弹出
+const BORN_STAGGER = 0.06;
+
 export enum ChairState {
     None, //空白
     Lock, //等待广告解锁
@@ -66,10 +69,12 @@ export class ChairNode extends Component {
         this.chairState = ChairState.Idle;
         for (let i = 0; i < this.sortDog.length; i++)
         {
+            // 按槽位错开 0.14s，整列自下而上依次弹出，而不是 6 只一起蹦
+            let bornDelay:number = i * BORN_STAGGER;
             if (this.isFlip)
-                this.sortDog[this.sortDog.length - i - 1].CreateDog(dogs[i]);
+                this.sortDog[this.sortDog.length - i - 1].CreateDog(dogs[i], bornDelay);
             else
-                this.sortDog[i].CreateDog(dogs[i]);
+                this.sortDog[i].CreateDog(dogs[i], bornDelay);
         }
     }
 

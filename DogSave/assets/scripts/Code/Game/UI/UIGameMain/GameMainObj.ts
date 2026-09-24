@@ -2,6 +2,7 @@ import { _decorator, Button, Component, Label, Node } from 'cc';
 import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
 import { GameDataManager, LevelConfig } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
+import { DogNode } from './DogNode';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameMainObj')
@@ -15,6 +16,11 @@ export class GameMainObj extends Component {
 
     @property(ChairNode)
     public chairNodes:ChairNode[] = [];
+
+    @property(DogNode)
+    public NoUsedDogs:DogNode[] = [];
+
+    public UsingdDogs:DogNode[] = [];
 
     start() {
         GameDataManager.instance.gameMainObj = this;
