@@ -35,6 +35,8 @@ export class ChairNode extends Component {
 
     public chairState:ChairState = ChairState.None;
 
+    public chairId:number;
+
     start() {
         for (let i = 0; i < this.sortDog.length; ++i)
         {
@@ -45,7 +47,9 @@ export class ChairNode extends Component {
         }
         this.touchNode.on(Node.EventType.TOUCH_END, (event) => {
             console.log('Mouse down');
-            GameDataManager.instance.SetLevelCfgById(GameDataManager.instance.curFightLevelId+1);
+            // GameDataManager.instance.SetLevelCfgById(GameDataManager.instance.curFightLevelId+1);
+            //todo
+            GameDataManager.instance.SetSelectChairId(this.chairId);
 
         }, this);
     }
@@ -63,10 +67,11 @@ export class ChairNode extends Component {
         
     }
 
-    public RefreshAllSlot(dogs:number[])
+    public RefreshAllSlot(dogs:number[], chId:number)
     {
         this.adsBtn.node.active = false;
         this.chairState = ChairState.Idle;
+        this.chairId = chId;
         for (let i = 0; i < this.sortDog.length; i++)
         {
             // 按槽位错开 0.14s，整列自下而上依次弹出，而不是 6 只一起蹦

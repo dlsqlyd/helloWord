@@ -143,7 +143,7 @@ export class GameDataManager implements IManager {
         {
             if (this.IsCanChange(this.curSelectChairIdx, chairId))
             {
-                
+                //todo 创建拷贝狗狗
             }
         }
 

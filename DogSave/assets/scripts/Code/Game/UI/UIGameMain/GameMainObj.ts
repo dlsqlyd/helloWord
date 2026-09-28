@@ -32,7 +32,7 @@ export class GameMainObj extends Component {
             if (i < cfg.chairs.length)
             {
                 chairNode.node.active = true;
-                chairNode.RefreshAllSlot(cfg.chairs[i].dogs);
+                chairNode.RefreshAllSlot(cfg.chairs[i].dogs, i);
             }
             // else if (i == cfg.chairs.length)
             // {
@@ -45,6 +45,21 @@ export class GameMainObj extends Component {
     }
 
     update(deltaTime: number) {
+        
+    }
+
+    //悬浮椅子上的狗狗
+    PlayHoverUp(chairId:number) {
+        
+    }
+
+    //飞入同色椅子
+    FlyToSameColorChair(fromChairId:number, toChairId:number) {
+        
+    }
+
+    //飞入到指定颜色的汽车
+    FlyToCar(chairId:number) {
         
     }
 }
