@@ -21,9 +21,6 @@ export class ChairNode extends Component {
     @property(Node)
     public touchNode:Node
 
-    @property(Node)
-    public sortlist:Node[] = [];
-
     @property(DogNode)
     public sortDog:DogNode[] = [];
 
@@ -38,13 +35,7 @@ export class ChairNode extends Component {
     public chairId:number;
 
     start() {
-        for (let i = 0; i < this.sortDog.length; ++i)
-        {
-            if (this.isFlip)
-                this.sortDog[this.sortDog.length - i - 1].SlotIdx = i+1;
-            else
-                this.sortDog[i].SlotIdx = i+1;
-        }
+       
         this.touchNode.on(Node.EventType.TOUCH_END, (event) => {
             console.log('Mouse down');
             // GameDataManager.instance.SetLevelCfgById(GameDataManager.instance.curFightLevelId+1);
@@ -52,6 +43,18 @@ export class ChairNode extends Component {
             GameDataManager.instance.SetSelectChairId(this.chairId);
 
         }, this);
+    }
+
+    public InitFlipSlot()
+    {
+        if (this.isFlip)
+        {
+            this.sortDog.reverse(); 
+        }
+        for (let i = 0; i < this.sortDog.length; i++)
+        {
+            this.sortDog[i].SlotIdx = i+1;
+        }
     }
 
     public FlyAir()
@@ -76,10 +79,7 @@ export class ChairNode extends Component {
         {
             // 按槽位错开 0.14s，整列自下而上依次弹出，而不是 6 只一起蹦
             let bornDelay:number = i * BORN_STAGGER;
-            if (this.isFlip)
-                this.sortDog[this.sortDog.length - i - 1].CreateDog(dogs[i], bornDelay);
-            else
-                this.sortDog[i].CreateDog(dogs[i], bornDelay);
+            this.sortDog[i].CreateDog(dogs[i], bornDelay);
         }
     }
 

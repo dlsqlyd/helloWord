@@ -59,6 +59,7 @@ export class DogNode extends Component {
     public DogState = DogState.None;
     public DogColor = DogColor.None;
     public SlotIdx:number;
+    public AnimDog:DogNode; //拷贝出来的动画狗狗
 
     @property(Animation)
     private _anim: Animation = null;
@@ -156,6 +157,8 @@ export class DogNode extends Component {
 
     /** delay: 秒，用于让一列狗自下而上依次弹出 */
     public PlayBorn(delay: number = 0) {
+        if (delay < 0)
+            return;
         if (!this._anim) return;
         this.dogIcon.node.active = false;
         this._cancelOneShot();

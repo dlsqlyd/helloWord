@@ -137,16 +137,104 @@ export class GameDataManager implements IManager {
     {
         if (this.curSelectChairIdx < 0)
         {
-            this.curSelectChairIdx = chairId
+            this.curSelectChairIdx = chairId;
+             this.gameMainObj.PlayHoverUp(chairId);
+        }
+        else if (this.curSelectChairIdx == chairId)
+        {
+            this.curSelectChairIdx = -1;
+            this.gameMainObj.PlayEndHover(chairId);
         }
         else
         {
             if (this.IsCanChange(this.curSelectChairIdx, chairId))
             {
-                //todo 创建拷贝狗狗
+                //todo 创建拷贝狗狗 先刷新数据
+                this.ChangeChairDogColor(this.curSelectChairIdx, chairId);
+                this.gameMainObj.FlyToSameColorChair(this.curSelectChairIdx, chairId);
+                this.curSelectChairIdx = -1;
+                // this.CheckDogFlyToCar();
             }
         }
 
+    }
+
+    public CheckDogFlyToCar()
+    {
+        for (let i = 0; i < this.curLevelConfig.chairs.length; i++)
+        {
+            let chairData:LevelChairData = this.curLevelConfig.chairs[i];
+            let defaultColor:number = chairData.dogs[0];
+            let isSameColor = true;
+            for (let i = 0; i < chairData.dogs.length; i++)
+            {
+                if (defaultColor != chairData.dogs[i])
+                {
+                    isSameColor = false;
+                    break;
+                }
+            }
+            if (isSameColor)
+            {
+               this.gameMainObj.FlyToCar(i); 
+               break;
+            }
+        }
+    }
+
+    //执行飞入
+    public ChangeChairDogColor(fromIndx:number, toIndex:number)
+    {
+        let fromChair:LevelChairData = this.curLevelConfig.chairs[fromIndx];
+        let toChair:LevelChairData = this.curLevelConfig.chairs[toIndex];
+        let toColor = 0;
+        let reciveNum = 0;
+        let sendNum = 0
+        for (let i = toChair.dogs.length - 1; i >= 0; i--)
+        {
+            if (toChair.dogs[i] > 0)
+            {
+                toColor = toChair.dogs[i];
+                break;
+            }
+        }
+
+         for (let i = toChair.dogs.length - 1; i >= 0; i--)
+        {
+            if (toChair.dogs[i] == 0)
+            {
+                reciveNum++;
+            }
+        }
+
+        for (let i = fromChair.dogs.length - 1; i >= 0; i--)
+        {
+            if (fromChair.dogs[i] > 0)
+            {
+                if (toColor == fromChair.dogs[i])
+                    sendNum++;
+                else
+                    break;
+            }
+        }
+        let fitNum = sendNum < reciveNum ? sendNum : reciveNum;
+        for (let i = 0; i < toChair.dogs.length; i++)
+        {
+            if (toChair.dogs[i] <= 0 && fitNum > 0)
+            {
+                toChair.dogs[i] = toColor;
+                fitNum--;
+            }
+        }
+        fitNum = sendNum < reciveNum ? sendNum : reciveNum;
+        for (let i = fromChair.dogs.length - 1; i >= 0; i--)
+        {
+            if (fromChair.dogs[i] == toColor && fitNum > 0)
+            {
+                fromChair.dogs[i] = 0;
+                fitNum--;
+            }
+        }
     }
 
      //判断是否可以飞入
