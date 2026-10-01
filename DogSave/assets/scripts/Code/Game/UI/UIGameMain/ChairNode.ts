@@ -57,15 +57,6 @@ export class ChairNode extends Component {
         }
     }
 
-    public FlyAir()
-    {}
-
-    public FlyToNear()
-    {}
-
-    public FlyToDoor()
-    {}
-
     update(deltaTime: number) {
         
     }

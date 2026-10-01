@@ -153,7 +153,9 @@ export class GameDataManager implements IManager {
                 this.ChangeChairDogColor(this.curSelectChairIdx, chairId);
                 this.gameMainObj.FlyToSameColorChair(this.curSelectChairIdx, chairId);
                 this.curSelectChairIdx = -1;
-                // this.CheckDogFlyToCar();
+                this.gameMainObj.scheduleOnce(() => {
+                    this.CheckDogFlyToCar();
+                }, 1);
             }
         }
 
@@ -174,10 +176,16 @@ export class GameDataManager implements IManager {
                     break;
                 }
             }
-            if (isSameColor)
-            {
-               this.gameMainObj.FlyToCar(i); 
-               break;
+            if (isSameColor && defaultColor != 0)
+            { 
+                for (let i = 0; i < chairData.dogs.length; i++)
+                {
+                    chairData.dogs[i] = 0;
+                }
+                this.gameMainObj.FlyToCar(i,()=>{
+                    this.CheckDogFlyToCar();
+                }); 
+                break;
             }
         }
     }
@@ -199,11 +207,22 @@ export class GameDataManager implements IManager {
             }
         }
 
-         for (let i = toChair.dogs.length - 1; i >= 0; i--)
+        for (let i = toChair.dogs.length - 1; i >= 0; i--)
         {
             if (toChair.dogs[i] == 0)
             {
                 reciveNum++;
+            }
+        }
+        if (toColor == 0)
+        {
+            for (let i = fromChair.dogs.length - 1; i >= 0; i--)
+            {
+                if (fromChair.dogs[i] > 0)
+                {
+                    toColor = fromChair.dogs[i];
+                    break;
+                }
             }
         }
 

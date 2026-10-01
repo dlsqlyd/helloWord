@@ -1,5 +1,8 @@
 import { _decorator, Animation, AnimationState, Button, Component, Label, Node, Sprite, Tween, Vec3, tween } from 'cc';
 import { ImageLoaderManager } from '../../../Module/Resource/ImageLoaderManager';
+import { GameDataManager } from '../../GameDataManager';
+import { DoorNode } from './DoorNode';
+import { RoomNode } from './RoomNode';
 const { ccclass, property } = _decorator;
 
 // 动画 clip（assets/assetsPackage/ui/uigamemain/animations/）
@@ -13,6 +16,10 @@ const { ccclass, property } = _decorator;
 //     born     播完 -> breathe
 //     hover_up 播完 -> hover
 // 落回槽位没有单独的 clip，用 tween 补那 0.18s（见 PlayDrop）。
+//
+// 注意 hover 是「整体上下浮动」：它只写 position 一条轨道，不碰 scale / eulerAngles。
+// 所以它不会覆盖别的系统给 dog 设的角度；反过来，离开悬浮时也指望不上它归位 ——
+// 必须显式 ResetPose()。
 const CLIP_BREATHE = 'breathe';
 const CLIP_BORN = 'born';
 const CLIP_HOVER_UP = 'hover_up';
@@ -185,11 +192,76 @@ export class DogNode extends Component {
         this._playOnly(CLIP_HOVER_UP);
     }
 
-    /** 悬浮待机循环。抬升高度是烘焙在 clip 的 y 轨道里的，见 ResetPose */
+    /**
+     * 悬浮待机循环：整体上下浮动（纯竖直平移，不旋转不缩放）。
+     * 抬升高度是烘焙在 clip 的 y 轨道里的，退出悬浮要显式 ResetPose() 归位。
+     */
     public PlayHover() {
         if (!this._anim) return;
         this._oneShot = '';
         this._playOnly(CLIP_HOVER);
+    }
+
+    //结束悬浮 回到椅子上
+    public PlayEndHover()
+    {
+        let out:Vec3 = GameDataManager.instance.LocalToWorld(this.AnimDog.node.parent, this.AnimDog.node.position);
+        tween(this.node)
+        .to(0.3, { position: out }, {
+            onComplete: (target?: object) => {
+                console.log('完成PlayEndHover', target);
+                this.AnimDog.node.active = true;
+                this.node.active = false;
+                this.AnimDog = null;
+            }
+        }).start();
+    }
+
+    //飞到选中的椅子
+    public FlyToNear(targetDog:DogNode, callback: () => void)
+    {
+        let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDog.node.parent, targetDog.node.position);
+        tween(this.node)
+        .to(0.8, { position: out }, {
+            onComplete: (target?: object) => {
+                console.log('完成FlyToNear', target);
+                this.node.active = false;
+                this.AnimDog = null;
+                targetDog.CreateDog(this.DogColor , -1);
+                targetDog.node.active = true;
+                callback();
+            }
+        }).start();
+    }
+
+    //飞到指定的卡车门
+    public FlyToCarDoor(targetDoor:DoorNode)
+    {
+        let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDoor.node.parent, targetDoor.node.position);
+        tween(this.node)
+        .to(1, { position: out }, {
+            onComplete: (target?: object) => {
+                console.log('完成FlyToNear', target);
+                this.node.active = false;
+                this.AnimDog = null;
+                targetDoor.PlayOpenAnim();
+            }
+        }).start();
+    }
+
+     //飞到指定的狗窝
+    public FlyToRoom(targetRoom:RoomNode)
+    {
+        let out:Vec3 = GameDataManager.instance.LocalToWorld(targetRoom.node.parent, targetRoom.node.position);
+        tween(this.node)
+        .to(1, { position: out }, {
+            onComplete: (target?: object) => {
+                console.log('完成FlyToRoom', target);
+                this.node.active = false;
+                this.AnimDog = null;
+                targetRoom.PlayReciveAnim();
+            }
+        }).start();
     }
 
     /**
@@ -221,9 +293,12 @@ export class DogNode extends Component {
 
     /**
      * 立刻把子节点 dog 的变换复位。
-     * 悬浮的「抬升 29.5px + 倾斜 3.5°」是烘焙进 hover_up / hover 的 y 与 eulerAngles
-     * 轨道里的 —— position 轨道写的是绝对局部坐标，代码另外去设节点 y 会被轨道直接覆盖。
+     * 悬浮的「抬升 29.5px（36 ± 6.5 上下浮动）」是烘焙进 hover_up / hover 的
+     * position 轨道里的 —— 该轨道写的是绝对局部坐标，代码另外去设节点 y 会被直接覆盖。
      * 代价就是退出 InSelect 时必须显式归位。
+     *
+     * 这里三个通道都要显式复位，不能省：hover 只写 position，不再写 scale / eulerAngles，
+     * 所以离开悬浮时它并不会帮你把角度和缩放收回来。
      */
     public ResetPose() {
         this._cancelOneShot();

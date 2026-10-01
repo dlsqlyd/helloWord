@@ -27,4 +27,9 @@ export class RoomNode extends Component {
     update(deltaTime: number) {
         
     }
+
+    PlayReciveAnim() 
+    {
+        
+    }
 }
