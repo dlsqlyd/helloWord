@@ -184,7 +184,7 @@ export class GameMainObj extends Component {
             {
                 if (fromChairNode.sortDog[i].DogColor > DogColor.None)
                 {
-                    toColor == fromChairNode.sortDog[i].DogColor;
+                    toColor = fromChairNode.sortDog[i].DogColor;
                     break;
                 }
             }

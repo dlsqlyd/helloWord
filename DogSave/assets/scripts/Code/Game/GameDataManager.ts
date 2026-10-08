@@ -76,7 +76,7 @@ export class GameDataManager implements IManager {
             let data = this.datas.data[i];
             this.leveldict.set(data.id, data);
         }
-        this.curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
+        this.curFightLevelId = 56;//CacheManager.instance.getInt("FightLevelId", 1);
         if (this.curFightLevelId > this.datas.data.length)
             this.curFightLevelId = this.datas.data.length;
         let cfg2:LevelConfig = GameDataManager.instance.GetLevelCfgById(this.curFightLevelId);
