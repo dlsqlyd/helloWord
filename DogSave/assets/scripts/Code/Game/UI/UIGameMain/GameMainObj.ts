@@ -148,12 +148,13 @@ export class GameMainObj extends Component {
                 firstColor = dogNode.DogColor;
             if (firstColor == dogNode.DogColor)
             {
-                dogNode.node.active = true;
                 if (dogNode.AnimDog != null)
                 {
-                    dogNode.AnimDog.PlayEndHover();
-                    this.PutAnimEndDog(dogNode.AnimDog);
-                    dogNode.AnimDog = null;
+                    dogNode.AnimDog.PlayEndHover( ()=>{
+                        this.PutAnimEndDog(dogNode.AnimDog);
+                        dogNode.AnimDog = null;
+                    });
+                   
                 }
             }
         }
@@ -224,10 +225,13 @@ export class GameMainObj extends Component {
                     sendNode[i].AnimDog.FlyToNear(reciveNode[i], ()=>{
                         this.PutAnimEndDog(sendNode[i].AnimDog);
                         sendNode[i].AnimDog = null;
+                        sendNode[i].DogColor = DogColor.None;
+                        sendNode[i].DogState = DogState.None;
                     });
                 }
                 else
                 {
+                    sendNode[i].node.active = true;
                     this.PutAnimEndDog(sendNode[i].AnimDog);
                     sendNode[i].AnimDog = null;
                 }
@@ -246,7 +250,7 @@ export class GameMainObj extends Component {
         this.scheduleOnce(() => {
             chairNode.node.active = false;
             callback();
-        }, 1);
+        }, 0.3);
     }
 
     //飞到任意狗窝
@@ -266,6 +270,8 @@ export class GameMainObj extends Component {
     PutAnimEndDog(dog:DogNode)
     {      
         this.NoUsedDogs.unshift(dog);//添加到头部
+        dog.StopAnim();
+        dog._stopTween();
         dog.node.active = false
         for (let i = 0; i < this.UsingdDogs.length; i++)
         {

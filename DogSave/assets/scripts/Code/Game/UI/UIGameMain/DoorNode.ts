@@ -1,6 +1,7 @@
 import { _decorator, Button, Component, Label, Node, Sprite } from 'cc';
 import { DogColor, DogNode } from './DogNode';
 import { ImageLoaderManager } from '../../../Module/Resource/ImageLoaderManager';
+import { close } from '../../../../../../extensions/taowu-editor/source/panel';
 const { ccclass, property } = _decorator;
 
 export enum DoorState {
@@ -17,7 +18,10 @@ export class DoorNode extends Component {
     public dogIcon: Sprite;
        
     @property(Sprite)
-    public carIcon: Sprite;
+    public openCarIcon: Sprite;
+
+    @property(Sprite)
+    public closeCarIcon: Sprite;
 
     @property(Button)
     public adsBtn: Button;

@@ -138,7 +138,7 @@ export class GameDataManager implements IManager {
         if (this.curSelectChairIdx < 0)
         {
             this.curSelectChairIdx = chairId;
-             this.gameMainObj.PlayHoverUp(chairId);
+            this.gameMainObj.PlayHoverUp(chairId);
         }
         else if (this.curSelectChairIdx == chairId)
         {

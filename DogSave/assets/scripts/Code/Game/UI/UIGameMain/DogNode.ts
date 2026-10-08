@@ -102,7 +102,7 @@ export class DogNode extends Component {
         return this.dogIcon ? this.dogIcon.node : null;
     }
 
-    private _stopTween() {
+    public _stopTween() {
         const dog = this._dogNode;
         if (dog) Tween.stopAllByTarget(dog);
     }
@@ -188,6 +188,7 @@ export class DogNode extends Component {
     public PlayHoverUp() {
         if (!this._anim) return;
         this._cancelOneShot();
+        this.DogState = DogState.InSelect;
         this._oneShot = SHOT_HOVER_UP;
         this._playOnly(CLIP_HOVER_UP);
     }
@@ -203,16 +204,19 @@ export class DogNode extends Component {
     }
 
     //结束悬浮 回到椅子上
-    public PlayEndHover()
+    public PlayEndHover(callback: () => void)
     {
         let out:Vec3 = GameDataManager.instance.LocalToWorld(this.AnimDog.node.parent, this.AnimDog.node.position);
+        let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
+        this.DogState = DogState.Idle;
         tween(this.node)
-        .to(0.3, { position: out }, {
+        .to(0.1, { position: newpos }, {
             onComplete: (target?: object) => {
                 console.log('完成PlayEndHover', target);
                 this.AnimDog.node.active = true;
                 this.node.active = false;
                 this.AnimDog = null;
+                callback();
             }
         }).start();
     }
@@ -220,9 +224,14 @@ export class DogNode extends Component {
     //飞到选中的椅子
     public FlyToNear(targetDog:DogNode, callback: () => void)
     {
+        this.StopAnim();
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDog.node.parent, targetDog.node.position);
+        let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
+        // newpos.x = newpos.x - 30;
+        newpos.y = newpos.y - 38;
         tween(this.node)
-        .to(0.8, { position: out }, {
+        .to(0.3, { position: newpos }, {
+            easing: 'backIn',
             onComplete: (target?: object) => {
                 console.log('完成FlyToNear', target);
                 this.node.active = false;
@@ -237,24 +246,32 @@ export class DogNode extends Component {
     //飞到指定的卡车门
     public FlyToCarDoor(targetDoor:DoorNode)
     {
+        this.StopAnim();
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDoor.node.parent, targetDoor.node.position);
+        let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
+        newpos.x -= 240;
+        newpos.y -= 60;
         tween(this.node)
-        .to(1, { position: out }, {
+        .to(1, { position: newpos }, {
+            easing: 'backOut',
             onComplete: (target?: object) => {
                 console.log('完成FlyToNear', target);
                 this.node.active = false;
                 this.AnimDog = null;
                 targetDoor.PlayOpenAnim();
             }
-        }).start();
+        },).start();
     }
 
      //飞到指定的狗窝
     public FlyToRoom(targetRoom:RoomNode)
     {
+        this.StopAnim();
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetRoom.node.parent, targetRoom.node.position);
+        let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         tween(this.node)
-        .to(1, { position: out }, {
+        .to(1, { position: newpos }, {
+            easing: 'backOut',
             onComplete: (target?: object) => {
                 console.log('完成FlyToRoom', target);
                 this.node.active = false;
@@ -309,7 +326,7 @@ export class DogNode extends Component {
         dog.setScale(1, 1, 1);
     }
 
-    private StopAnim() {
+    public StopAnim() {
         this._cancelOneShot();
         if (!this._anim) return;
         this._anim.stop();

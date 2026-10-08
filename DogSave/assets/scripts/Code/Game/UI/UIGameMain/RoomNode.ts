@@ -1,4 +1,4 @@
-import { _decorator, Button, Component, Label, Node } from 'cc';
+import { _decorator, Button, Component, Label, Node, Sprite } from 'cc';
 import { DogColor } from './DogNode';
 const { ccclass, property } = _decorator;
 
@@ -12,11 +12,12 @@ export enum RoomState {
 @ccclass('RoomNode')
 export class RoomNode extends Component {
       
-    @property(Label)
-    public levelText: Label;
-    
+
     @property(Button)
-    public settingBtn: Button;
+    public adsBtn: Button;
+
+    @property(Sprite)
+    public dogIcon: Sprite;
 
     public sleepDogColor:DogColor;
 
