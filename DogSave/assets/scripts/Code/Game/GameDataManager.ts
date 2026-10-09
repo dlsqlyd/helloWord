@@ -7,6 +7,9 @@ import { ConfigManager } from '../Module/Config/ConfigManager';
 import { Log } from '../../Mono/Module/Log/Log';
 import { GameMainObj } from './UI/UIGameMain/GameMainObj';
 import { ready } from '../../../../extensions/taowu-editor/source/panel';
+import { RoomNode, RoomState } from './UI/UIGameMain/RoomNode';
+import { DogColor, DOG_SFX_SAD } from './UI/UIGameMain/DogNode';
+import { SoundManager } from '../Module/Resource/SoundManager';
 
 // 坐标转换用的临时矩阵。这两个函数在飞行动画里会逐帧调用，
 // 每次 new Mat4 会白白产生垃圾，所以复用。
@@ -45,6 +48,7 @@ export class GameDataManager implements IManager {
     private leveldict: Map<number, LevelConfig>
     public curFightLevelId:number = 1;
     private curSelectChairIdx:number = -1;
+    private curSelectRoomIdx:number = -1;
     public curLevelConfig:LevelConfig;
     public gameMainObj:GameMainObj;
 
@@ -135,9 +139,33 @@ export class GameDataManager implements IManager {
 
     public SetSelectChairId(chairId:number)
     {
+        if (this.curSelectRoomIdx > 0)
+        {
+            let roomNode:RoomNode = this.gameMainObj.GetRoomNode(this.curSelectRoomIdx);
+            let chairData = this.curLevelConfig.chairs[chairId];
+            for (let i = 0; i < chairData.dogs.length; i++)
+            {
+                if ((i == 0 && chairData.dogs[i] < 0) || (i > 0 && chairData.dogs[i] < 0 && chairData.dogs[i-1] == roomNode.sleepDogColor))
+                {
+                    chairData.dogs[i] = roomNode.sleepDogColor;
+                    roomNode.CreateWithColor(DogColor.None);
+                    this.gameMainObj.FlyToSameColorChairByRoomId(this.curSelectRoomIdx, chairId);
+                    this.curSelectRoomIdx = -1;
+                    break;
+                }
+            }
+            return;
+        }
         if (this.curSelectChairIdx < 0)
         {
             this.curSelectChairIdx = chairId;
+            // 点中椅子 ⇒ 狗狗悬浮起来被"拎"着，这时它还没获救，叫一声委屈的。
+            //
+            // 放在这里而**不是** GameMainObj.PlayHoverUp() 里，是因为 PlayHoverUp
+            // 在 FlyToCar 里也会被调用（起飞前的悬浮），那一步该响的是「高兴」的叫声 ——
+            // 写进 PlayHoverUp 会让两个音效在飞向卡车时一起炸响。
+            // 这里的语义是"玩家选中了椅子"，和"狗狗要获救"是两件事，所以按调用点分。
+            SoundManager.instance.playSound(DOG_SFX_SAD);
             this.gameMainObj.PlayHoverUp(chairId);
         }
         else if (this.curSelectChairIdx == chairId)
@@ -161,6 +189,54 @@ export class GameDataManager implements IManager {
 
     }
 
+    public SetSelectRoomId(roomId:number)
+    {
+        let roomNode:RoomNode = this.gameMainObj.GetRoomNode(roomId);
+        if (this.curSelectRoomIdx < 0)
+        {
+            if (roomNode.sleepDogColor == DogColor.None)
+            {
+                if (this.curSelectChairIdx > 0) //飞到room
+                {
+                    this.gameMainObj.FlyToRoom(this.curSelectChairIdx, roomId);
+                    let chairData = this.curLevelConfig.chairs[this.curSelectChairIdx];
+                    for (let i = 0; i < chairData.dogs.length; i++)
+                    {
+                        if (chairData.dogs[i] > 0)
+                        {
+                            roomNode.CreateWithColor(chairData.dogs[i]);
+                            chairData.dogs[i] = 0;
+                            break;
+                        }
+                    }
+                    this.curSelectChairIdx = -1;
+                }
+            }
+            else
+            {
+                if (this.curSelectChairIdx < 0) //悬浮
+                {
+                    this.curSelectRoomIdx = roomId;
+                    this.gameMainObj.PlayHoverUpByRoomId(roomId);
+                }
+            }
+        }
+        else if (this.curSelectRoomIdx == roomId)
+        {
+            this.curSelectRoomIdx = -1;
+            this.gameMainObj.PlayEndHoverByRoomId(roomId);
+        }
+        else
+        {
+            this.gameMainObj.PlayEndHoverByRoomId(this.curSelectRoomIdx);
+             if (this.curSelectChairIdx < 0) //悬浮
+            {
+                this.curSelectRoomIdx = roomId;
+                this.gameMainObj.PlayHoverUpByRoomId(roomId);
+            }
+        }
+    }
+
     public CheckDogFlyToCar()
     {
         for (let i = 0; i < this.curLevelConfig.chairs.length; i++)
@@ -178,13 +254,16 @@ export class GameDataManager implements IManager {
             }
             if (isSameColor && defaultColor != 0)
             { 
-                for (let i = 0; i < chairData.dogs.length; i++)
-                {
-                    chairData.dogs[i] = 0;
-                }
-                this.gameMainObj.FlyToCar(i,()=>{
+                let isOk:Boolean = this.gameMainObj.FlyToCar(defaultColor, i,()=>{
                     this.CheckDogFlyToCar();
                 }); 
+                if (isOk)
+                {
+                    for (let i = 0; i < chairData.dogs.length; i++)
+                    {
+                        chairData.dogs[i] = 0;
+                    }
+                }
                 break;
             }
         }
@@ -257,7 +336,21 @@ export class GameDataManager implements IManager {
     }
 
      //判断是否可以飞入
-    public IsCanChange(fromIndx:number, toIndex:number):boolean
+     //
+     // 这里必须与关卡求解器 level_tools/level_rules.py 的 _moves() 完全一致，
+     // 否则「100 关全部可解」这个结论在实机上就不成立 —— 求解器是按下面三条枚举走法的：
+     //
+     //     for f in range(n):
+     //         dog = chair_top(state[f])
+     //         if dog is None:                      continue   # ① 源椅不能是空的
+     //         for t in range(n):
+     //             if t == f or chair_free(state[t]) == 0: continue   # ② 目标椅要有空位
+     //             dt = chair_top(state[t])
+     //             if dt is not None and dt != dog:        continue   # ③ 目标顶为空或同色
+     //
+     // 原先只判了 ③：目标椅满了仍然放行（ChangeChairDogColor 里 fitNum 会是 0，
+     // 于是什么都没搬、白白播一次飞行动画），源椅为空时也会放行。
+     public IsCanChange(fromIndx:number, toIndex:number):boolean
     {
         let fromChair:LevelChairData = this.curLevelConfig.chairs[fromIndx];
         let toChair:LevelChairData = this.curLevelConfig.chairs[toIndex];
@@ -279,6 +372,24 @@ export class GameDataManager implements IManager {
                 break;
             }
         }
+
+        // ① 源椅不能是空的 —— 没有狗可搬
+        if (fromColor == 0)
+            return false;
+
+        // ② 目标椅至少要有 1 个空位。
+        //    判空用 `<= 0` 而不是 `== 0`，是为了和 ChangeChairDogColor 里
+        //    真正找空位的那句 `toChair.dogs[i] <= 0` 保持同一个口径。
+        let freeNum = 0;
+        for (let i = 0; i < toChair.dogs.length; i++)
+        {
+            if (toChair.dogs[i] <= 0)
+                freeNum++;
+        }
+        if (freeNum == 0)
+            return false;
+
+        // ③ 目标椅顶部为空（整根空椅）或与源椅顶部同色
         if (toColor == 0 || toColor == fromColor)
             return true;
         return false;

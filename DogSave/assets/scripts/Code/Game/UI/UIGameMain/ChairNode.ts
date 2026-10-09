@@ -21,6 +21,17 @@ export class ChairNode extends Component {
     @property(Node)
     public touchNode:Node
 
+    /**
+     * 椅子的美术节点（预制件里的 `bg`）。
+     *
+     * 单独拿出来是因为：狗狗飞往车门时要把椅子"收掉"，但**不能关整个 chairNode** ——
+     * 被 FlyToCarDoor 动画的狗是椅子的子节点（sortDog → layout/slot1..slot6），
+     * 关掉椅子会连狗带拖尾一起不渲染，整段飞行动画看不见。
+     * 所以只关 `bg` + `touchNode`，留着 `layout` 让狗继续飞。
+     */
+    @property(Node)
+    public bg:Node
+
     @property(DogNode)
     public sortDog:DogNode[] = [];
 
@@ -64,6 +75,11 @@ export class ChairNode extends Component {
     public RefreshAllSlot(dogs:number[], chId:number)
     {
         this.adsBtn.node.active = false;
+        // 椅子会被下一关复用（GameMainObj.start 里 node.active = true + RefreshAllSlot）。
+        // FlyToCar 只收了 bg/touchNode、没关整个节点，所以这里要把它们放回来，
+        // 否则复用到的椅子会是一把"看不见的椅子"。
+        if (this.bg) this.bg.active = true;
+        if (this.touchNode) this.touchNode.active = true;
         this.chairState = ChairState.Idle;
         this.chairId = chId;
         for (let i = 0; i < this.sortDog.length; i++)

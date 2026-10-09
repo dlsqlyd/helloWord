@@ -1,4 +1,4 @@
-import { _decorator, Animation, AnimationState, Button, Component, Label, Node, Sprite, Tween, Vec3, tween } from 'cc';
+import { _decorator, Animation, AnimationState, Button, Component, Label, Node, ParticleSystem2D, Sprite, Tween, Vec2, Vec3, tween } from 'cc';
 import { ImageLoaderManager } from '../../../Module/Resource/ImageLoaderManager';
 import { GameDataManager } from '../../GameDataManager';
 import { DoorNode } from './DoorNode';
@@ -28,8 +28,26 @@ const ALL_CLIPS = [CLIP_BREATHE, CLIP_BORN, CLIP_HOVER_UP, CLIP_HOVER];
 
 const BREATHE_DURATION = 2.4;
 
+// 狗狗音效的资源路径（相对 audio_sound 资源包，见 Module/Resource/SoundManager）。
+//
+// 放这里而不是各自内联在调用点：两个音效分别由 GameDataManager 和 GameMainObj 播放，
+// 字符串抄错**不会报错**，只会静默没声音（loadAsync 失败后 clip 为 null，
+// SoundManager 只打一条 console.error）。集中成常量至少保证两边写的是同一份。
+//
+//   高兴 —— 狗狗飞向卡车时   → GameMainObj.FlyToCar
+//   悲伤 —— 狗狗被点击悬浮时 → GameDataManager.SetSelectChairId
+export const DOG_SFX_HAPPY = "audio/sound/dog_happy";
+export const DOG_SFX_SAD = "audio/sound/dog_sad";
+
 // 落回槽位的时长。比 hover_up（0.25s）短 —— 下落有重力加速，本来就该更快。
 const DROP_DURATION = 0.18;
+
+// 拖尾发射点沿运动反方向后移的距离（世界像素）。
+// 光条贴图是左右对称的透镜形、粒子以自身中心为原点 —— 不后移的话 120px 的光条
+// 会有一半戳到狗前面去（离线预览里一眼就能看到）。后移 46px 之后变成
+// "狗前 14 / 狗后 106"，整条落在身后。
+// 数值与 fx_tools/fx_defs.py 里的 TRAIL_BACK_OFFSET 一致，改一处要改两处。
+const TRAIL_BACK_OFFSET = 46;
 
 // _oneShot 的取值：正在占着轨道的那些"播完就结束"的动作
 const SHOT_BORN = 'born';
@@ -70,6 +88,17 @@ export class DogNode extends Component {
 
     @property(Animation)
     private _anim: Animation = null;
+
+    /**
+     * 拖尾光条 / 拖尾火星（DogNode.prefab 上的 TrailStreak / TrailSpark 子节点）。
+     * 两个都是 _positionType = FREE，所以粒子停在**被发射时的世界位置**，
+     * 狗往前走、光条留在原地 => 拖尾。详见 fx_tools/fx_defs.py。
+     */
+    @property(ParticleSystem2D)
+    private _trailStreak: ParticleSystem2D = null;
+
+    @property(ParticleSystem2D)
+    private _trailSpark: ParticleSystem2D = null;
 
     /** 当前占着轨道的一次性动作（born / hover_up / drop），'' 表示轨道空闲 */
     private _oneShot: string = '';
@@ -203,6 +232,59 @@ export class DogNode extends Component {
         this._playOnly(CLIP_HOVER);
     }
 
+    // ------------------------------------------------------------------
+    // 拖尾粒子（飞行期间播放）
+    // ------------------------------------------------------------------
+
+    /**
+     * 开拖尾。dirX / dirY 是这次飞行的**运动方向**（不用归一化）。
+     *
+     * 方向为什么要传进来：粒子参数 angle 决定了发射角，而 rotationIsDir 会把
+     * 光条的长轴对齐到发射方向（引擎里 particle.rotation = -toDegree(atan2(dir.y, dir.x))）。
+     * prefab 里的 angle 只是个占位值 —— 同一个 prefab 要往上下左右各个方向飞，
+     * 静态参数没法覆盖所有方向，只能在起飞这一刻按实际方向写进去。
+     *
+     * 注意 FREE 模式下 sourcePos 只在节点局部系里平移、不做旋转，
+     * 而本节点（DogNode 根节点）没有旋转，所以局部系 == 世界系，直接按世界方向算即可。
+     */
+    public PlayTrail(dirX: number, dirY: number) {
+        const len = Math.hypot(dirX, dirY);
+        // 原地不动时（len≈0）给个默认朝向，别把 angle 留成占位值
+        const ux = len > 1e-6 ? dirX / len : 1;
+        const uy = len > 1e-6 ? dirY / len : 0;
+
+        if (this._trailStreak && this._trailStreak.isValid) {
+            this._trailStreak.angle = Math.atan2(uy, ux) * 180 / Math.PI;
+            this._trailStreak.sourcePos.set(-ux * TRAIL_BACK_OFFSET, -uy * TRAIL_BACK_OFFSET);
+            this._trailStreak.resetSystem();
+        }
+        if (this._trailSpark && this._trailSpark.isValid) {
+            // 火星不需要方向（圆点），跟着一起开就行
+            this._trailSpark.resetSystem();
+        }
+    }
+
+    /**
+     * 停拖尾。
+     *
+     * 注意：引擎的 stopSystem() **并不会**让已发出的粒子淡完，尽管它的文档注释是
+     * 那么写的（particle-system-2d.ts:887 "发射出去的粒子将继续运行，直至粒子生命结束"）。
+     * 实现是 stopSystem() 把 `_stopped` 置 true（:893），而 `_canRender()` 要求
+     * `!this._stopped`（:1228）⇒ 渲染当场被掐断，还活着的粒子直接消失。
+     * 所以飞行结束时尾巴是**硬切**的，不是淡出的。
+     *
+     * 想要尾巴自然消散，得改成把 emissionRate 归零、等粒子自己死光再收尾
+     * （注意那样 `elapsed` 不再累加，引擎不会自动 stop，要自己补一次 stopSystem）。
+     * 详见 fx_tools/fx_defs.py 顶部的不变量说明。
+     *
+     * 这里仍用 stopSystem 的原因：拖尾是在 StopAnim() 里收的，而 StopAnim 也覆盖
+     * 回收/复位路径 —— 那些场景下"立刻消失"正是想要的。
+     */
+    public StopTrail() {
+        if (this._trailStreak && this._trailStreak.isValid) this._trailStreak.stopSystem();
+        if (this._trailSpark && this._trailSpark.isValid) this._trailSpark.stopSystem();
+    }
+
     //结束悬浮 回到椅子上
     public PlayEndHover(callback: () => void)
     {
@@ -229,7 +311,12 @@ export class DogNode extends Component {
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         // newpos.x = newpos.x - 30;
         newpos.y = newpos.y - 38;
+        // 先算好方向再开 tween —— 在 .call() 里读 this.node.position 也行，
+        // 但那样要依赖"call 一定在第一帧 to 之前执行"这个实现细节，不如现在就取。
+        const dirX = newpos.x - this.node.position.x;
+        const dirY = newpos.y - this.node.position.y;
         tween(this.node)
+        .call(() => this.PlayTrail(dirX, dirY))
         .to(0.3, { position: newpos }, {
             easing: 'backIn',
             onComplete: (target?: object) => {
@@ -243,22 +330,55 @@ export class DogNode extends Component {
         }).start();
     }
 
+     //飞到选中的椅子
+    public _FlyToRoom(roomNode:RoomNode, callback: () => void)
+    {
+        this.StopAnim();
+        let out:Vec3 = GameDataManager.instance.LocalToWorld(roomNode.dogIcon.node.parent, roomNode.dogIcon.node.position);
+        let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
+        // newpos.x = newpos.x - 30;
+        newpos.y = newpos.y - 38;
+        // 先算好方向再开 tween —— 在 .call() 里读 this.node.position 也行，
+        // 但那样要依赖"call 一定在第一帧 to 之前执行"这个实现细节，不如现在就取。
+        const dirX = newpos.x - this.node.position.x;
+        const dirY = newpos.y - this.node.position.y;
+        tween(this.node)
+        .call(() => this.PlayTrail(dirX, dirY))
+        .to(0.3, { position: newpos }, {
+            easing: 'backIn',
+            onComplete: (target?: object) => {
+                console.log('完成FlyToNear', target);
+                this.node.active = false;
+                this.AnimDog = null;
+                roomNode.CreateWithColor(this.DogColor);
+                roomNode.dogIcon.node.active = true;
+                callback();
+            }
+        }).start();
+    }
+
+
     //飞到指定的卡车门
-    public FlyToCarDoor(targetDoor:DoorNode)
+    public FlyToCarDoor(delay: number, targetDoor:DoorNode)
     {
         this.StopAnim();
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDoor.node.parent, targetDoor.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         newpos.x -= 240;
         newpos.y -= 60;
-        tween(this.node)
+        const dirX = newpos.x - this.node.position.x;
+        const dirY = newpos.y - this.node.position.y;
+        tween(this.node).delay(delay)
+        // 拖尾要等 delay 走完再开。FlyToCar 里这批狗是错开 0.1s 起飞的，
+        // 若在函数入口就开，还没轮到起飞的狗会在原地先堆出一坨粒子。
+        .call(() => this.PlayTrail(dirX, dirY))
         .to(1, { position: newpos }, {
             easing: 'backOut',
             onComplete: (target?: object) => {
                 console.log('完成FlyToNear', target);
                 this.node.active = false;
                 this.AnimDog = null;
-                targetDoor.PlayOpenAnim();
+                targetDoor.PlayHitEff();
             }
         },).start();
     }
@@ -269,7 +389,10 @@ export class DogNode extends Component {
         this.StopAnim();
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetRoom.node.parent, targetRoom.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
+        const dirX = newpos.x - this.node.position.x;
+        const dirY = newpos.y - this.node.position.y;
         tween(this.node)
+        .call(() => this.PlayTrail(dirX, dirY))
         .to(1, { position: newpos }, {
             easing: 'backOut',
             onComplete: (target?: object) => {
@@ -328,6 +451,7 @@ export class DogNode extends Component {
 
     public StopAnim() {
         this._cancelOneShot();
+        this.StopTrail();
         if (!this._anim) return;
         this._anim.stop();
         for (const n of ALL_CLIPS) {
