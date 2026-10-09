@@ -72,11 +72,12 @@ export class GameMainObj extends Component {
             }
         }
 
-         for (let i = 0; i < this.roomNodes.length; i++)
+        for (let i = 0; i < this.roomNodes.length; i++)
         {
             let roomNode:RoomNode = this.roomNodes[i];
             roomNode.roomIndex = i + 1;
             roomNode.roomState = i < 1 ? RoomState.Free : RoomState.Lock;
+            roomNode.dogIcon.node.active = false;
             roomNode.RefreshLock();
         }
     }
@@ -90,13 +91,13 @@ export class GameMainObj extends Component {
             let list = cfg.chairs[i].dogs;
             for (let j = 0; j < list.length; j++)
             {
-                if (list[i] > 0)
+                if (list[j] > 0)
                 {
                     for (let k = 0; k < this.doorNodes.length; k++)
                     {
-                        if (list[i] !=  this.doorNodes[i].waitDogColor)
+                        if (list[j] !=  this.doorNodes[k].waitDogColor)
                         {
-                            randomColor = list[i];
+                            randomColor = list[j];
                             return randomColor;
                         }
                     }

@@ -56,7 +56,7 @@ export class DoorNode extends Component {
         // 原先写成 `==` 是个空语句：doorState 停在旧值，
         // 紧跟着的 RfreshDogSprite() 读到的是过期状态，新狗的表情/车门开合都是错的。
         this.doorState = DoorState.Idle;
-        this.dogIcon.node.active = this.waitDogColor == DogColor.None;
+        this.dogIcon.node.active = this.waitDogColor != DogColor.None;
         this.RfreshDogSprite();
     }
 
@@ -118,5 +118,7 @@ export class DoorNode extends Component {
     RefreshLock()
     {
         this.adsBtn.node.active = this.doorState == DoorState.Lock;
+        if (this.doorState == DoorState.Lock)
+            this.dogIcon.node.active = false;
     }
 }

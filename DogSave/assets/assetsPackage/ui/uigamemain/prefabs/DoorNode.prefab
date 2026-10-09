@@ -921,8 +921,8 @@
     "_startColor": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 250,
-      "b": 220,
+      "g": 246,
+      "b": 214,
       "a": 255
     },
     "_startColorVar": {
@@ -935,8 +935,8 @@
     "_endColor": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 242,
-      "b": 162,
+      "g": 176,
+      "b": 70,
       "a": 0
     },
     "_endColorVar": {

@@ -470,8 +470,8 @@
     "_startColor": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 250,
-      "b": 224,
+      "g": 246,
+      "b": 226,
       "a": 190
     },
     "_startColorVar": {
@@ -484,8 +484,8 @@
     "_endColor": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 238,
-      "b": 154,
+      "g": 158,
+      "b": 54,
       "a": 0
     },
     "_endColorVar": {
@@ -671,8 +671,8 @@
     "_startColor": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 252,
-      "b": 228,
+      "g": 250,
+      "b": 232,
       "a": 200
     },
     "_startColorVar": {
@@ -685,8 +685,8 @@
     "_endColor": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 232,
-      "b": 146,
+      "g": 150,
+      "b": 60,
       "a": 0
     },
     "_endColorVar": {

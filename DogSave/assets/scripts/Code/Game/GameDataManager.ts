@@ -244,9 +244,9 @@ export class GameDataManager implements IManager {
             let chairData:LevelChairData = this.curLevelConfig.chairs[i];
             let defaultColor:number = chairData.dogs[0];
             let isSameColor = true;
-            for (let i = 0; i < chairData.dogs.length; i++)
+            for (let j = 0; j < chairData.dogs.length; j++)
             {
-                if (defaultColor != chairData.dogs[i])
+                if (defaultColor != chairData.dogs[j])
                 {
                     isSameColor = false;
                     break;
@@ -259,12 +259,12 @@ export class GameDataManager implements IManager {
                 }); 
                 if (isOk)
                 {
-                    for (let i = 0; i < chairData.dogs.length; i++)
+                    for (let k = 0; k < chairData.dogs.length; k++)
                     {
-                        chairData.dogs[i] = 0;
+                        chairData.dogs[k] = 0;
                     }
+                    break;
                 }
-                break;
             }
         }
     }

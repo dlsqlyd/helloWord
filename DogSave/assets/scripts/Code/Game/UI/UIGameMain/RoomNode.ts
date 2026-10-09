@@ -50,7 +50,7 @@ export class RoomNode extends Component {
         // roomState 停在旧值，下面 adsBtn / RfreshDogSprite() 全都读到过期状态 ——
         // 结果是狗窝永远不显示 dogface_sad_<色>，一直停在 battle_alpha。
         this.roomState = RoomState.Free;
-        this.dogIcon.node.active = this.sleepDogColor == DogColor.None;
+        this.dogIcon.node.active = this.sleepDogColor != DogColor.None;
         // roomState 刚在上一行被置为 Free，所以这里恒为 false。
         // 原来写成 `this.roomState == RoomState.Lock` —— 在赋值之后再做比较，
         // tsc 会直接报 TS2367（'RoomState.Free' 与 'RoomState.Lock' 无重叠）。
@@ -104,6 +104,8 @@ export class RoomNode extends Component {
     RefreshLock()
     {
         this.adsBtn.node.active = this.roomState == RoomState.Lock;
+        if (this.roomState == RoomState.Lock)
+            this.dogIcon.node.active = false;
     }
 
     PlayReciveAnim() 

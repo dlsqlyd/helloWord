@@ -365,7 +365,7 @@ export class DogNode extends Component {
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDoor.node.parent, targetDoor.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         newpos.x -= 240;
-        newpos.y -= 60;
+        newpos.y -= 100;
         const dirX = newpos.x - this.node.position.x;
         const dirY = newpos.y - this.node.position.y;
         tween(this.node).delay(delay)
