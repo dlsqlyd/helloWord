@@ -8,6 +8,8 @@ import { DoorNode, DoorState } from './DoorNode';
 import { RoomNode, RoomState } from './RoomNode';
 import { SoundManager } from '../../../Module/Resource/SoundManager';
 import { load } from '../../../../../../extensions/taowu-editor/source/main';
+import { UIManager } from '../../../Module/UI/UIManager';
+import { UIGameResultView } from './UIGameResultView';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameMainObj')
@@ -80,6 +82,12 @@ export class GameMainObj extends Component {
             roomNode.dogIcon.node.active = false;
             roomNode.RefreshLock();
         }
+        this.settingBtn.node.on(Button.EventType.CLICK, this.onClickEvent, this);
+    }
+
+    private async onClickEvent(button: Button){
+        console.log('onClickEvent setting');
+        await UIManager.instance.openBox(UIGameResultView,UIGameResultView.PrefabPath);
     }
 
     GetRandomDoorColor() : DogColor
@@ -120,6 +128,7 @@ export class GameMainObj extends Component {
         roomNode.dogIcon.node.active = false;
         let freeDog:DogNode = this.GetUnusedAnimDog();
         roomNode.AnimDog = freeDog;
+        freeDog.AnimDog = roomNode.dogNode;
         let out:Vec3 = GameDataManager.instance.LocalToWorld(roomNode.dogIcon.node.parent, roomNode.dogIcon.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(freeDog.node.parent, out);
         freeDog.node.position = newpos;
@@ -212,7 +221,7 @@ export class GameMainObj extends Component {
         return null;
     }
 
-    FlyToSameColorChairByRoomId(roomId:number, toChairId:number)
+    FlyToSameColorChairFromRoomId(roomId:number, toChairId:number)
     {
         let roomNode = this.GetRoomNode(roomId);
         let toChairNode:ChairNode = this.GetChairNodeByChairId(toChairId); 

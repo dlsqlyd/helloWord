@@ -145,11 +145,11 @@ export class GameDataManager implements IManager {
             let chairData = this.curLevelConfig.chairs[chairId];
             for (let i = 0; i < chairData.dogs.length; i++)
             {
-                if ((i == 0 && chairData.dogs[i] < 0) || (i > 0 && chairData.dogs[i] < 0 && chairData.dogs[i-1] == roomNode.sleepDogColor))
+                if ((i == 0 && chairData.dogs[i] <= 0) || (i > 0 && chairData.dogs[i] <= 0 && chairData.dogs[i-1] == roomNode.sleepDogColor))
                 {
                     chairData.dogs[i] = roomNode.sleepDogColor;
                     roomNode.CreateWithColor(DogColor.None);
-                    this.gameMainObj.FlyToSameColorChairByRoomId(this.curSelectRoomIdx, chairId);
+                    this.gameMainObj.FlyToSameColorChairFromRoomId(this.curSelectRoomIdx, chairId);
                     this.curSelectRoomIdx = -1;
                     break;
                 }
@@ -204,7 +204,7 @@ export class GameDataManager implements IManager {
                     {
                         if (chairData.dogs[i] > 0)
                         {
-                            roomNode.CreateWithColor(chairData.dogs[i]);
+                            // roomNode.CreateWithColor(chairData.dogs[i]);
                             chairData.dogs[i] = 0;
                             break;
                         }

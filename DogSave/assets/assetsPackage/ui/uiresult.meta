@@ -1,0 +1,37 @@
+{
+  "ver": "1.2.0",
+  "importer": "directory",
+  "imported": true,
+  "uuid": "c75dfa52-56ae-4749-947d-239340e51565",
+  "files": [],
+  "subMetas": {},
+  "userData": {
+    "isBundle": true,
+    "bundleName": "ui_uiresult",
+    "priority": 20,
+    "bundleFilterConfig": [
+      {
+        "range": "include",
+        "type": "url",
+        "patchOption": {
+          "patchType": "glob",
+          "value": "db://assets/assetsPackage/ui/uiresult/**/*"
+        },
+        "assets": [
+          ""
+        ]
+      },
+      {
+        "range": "include",
+        "type": "url",
+        "patchOption": {
+          "patchType": "glob",
+          "value": "db://assets/assetsPackage/ui/uiresult/prefabs/**/*.prefab"
+        },
+        "assets": [
+          ""
+        ]
+      }
+    ]
+  }
+}

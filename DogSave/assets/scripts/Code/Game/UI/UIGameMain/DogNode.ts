@@ -315,9 +315,12 @@ export class DogNode extends Component {
         // 但那样要依赖"call 一定在第一帧 to 之前执行"这个实现细节，不如现在就取。
         const dirX = newpos.x - this.node.position.x;
         const dirY = newpos.y - this.node.position.y;
+        let dis = Vec3.distance(out, newpos);
+        let time = dis / 2500;
+        console.log("time : " + time);
         tween(this.node)
         .call(() => this.PlayTrail(dirX, dirY))
-        .to(0.3, { position: newpos }, {
+        .to(time, { position: newpos }, {
             easing: 'backIn',
             onComplete: (target?: object) => {
                 console.log('完成FlyToNear', target);
@@ -338,13 +341,15 @@ export class DogNode extends Component {
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         // newpos.x = newpos.x - 30;
         newpos.y = newpos.y - 38;
+         let dis = Vec3.distance(out, newpos);
+        let time = dis / 2500;
         // 先算好方向再开 tween —— 在 .call() 里读 this.node.position 也行，
         // 但那样要依赖"call 一定在第一帧 to 之前执行"这个实现细节，不如现在就取。
         const dirX = newpos.x - this.node.position.x;
         const dirY = newpos.y - this.node.position.y;
         tween(this.node)
         .call(() => this.PlayTrail(dirX, dirY))
-        .to(0.3, { position: newpos }, {
+        .to(time, { position: newpos }, {
             easing: 'backIn',
             onComplete: (target?: object) => {
                 console.log('完成FlyToNear', target);
@@ -366,13 +371,15 @@ export class DogNode extends Component {
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         newpos.x -= 240;
         newpos.y -= 100;
+        let dis = Vec3.distance(out, newpos);
+        let time = dis / 2500;
         const dirX = newpos.x - this.node.position.x;
         const dirY = newpos.y - this.node.position.y;
         tween(this.node).delay(delay)
         // 拖尾要等 delay 走完再开。FlyToCar 里这批狗是错开 0.1s 起飞的，
         // 若在函数入口就开，还没轮到起飞的狗会在原地先堆出一坨粒子。
         .call(() => this.PlayTrail(dirX, dirY))
-        .to(1, { position: newpos }, {
+        .to(time, { position: newpos }, {
             easing: 'backOut',
             onComplete: (target?: object) => {
                 console.log('完成FlyToNear', target);
@@ -389,11 +396,13 @@ export class DogNode extends Component {
         this.StopAnim();
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetRoom.node.parent, targetRoom.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
+         let dis = Vec3.distance(out, newpos);
+        let time = dis / 2500;
         const dirX = newpos.x - this.node.position.x;
         const dirY = newpos.y - this.node.position.y;
         tween(this.node)
         .call(() => this.PlayTrail(dirX, dirY))
-        .to(1, { position: newpos }, {
+        .to(time, { position: newpos }, {
             easing: 'backOut',
             onComplete: (target?: object) => {
                 console.log('完成FlyToRoom', target);

@@ -23,6 +23,10 @@ export class RoomNode extends Component {
     @property(Sprite)
     public dogIcon: Sprite;
 
+    @property(DogNode)
+    public dogNode: DogNode;
+    
+
     public sleepDogColor:DogColor;
 
     public roomIndex:number;
@@ -32,6 +36,7 @@ export class RoomNode extends Component {
     public AnimDog:DogNode; //拷贝出来的动画狗狗
 
     start() {
+        this.sleepDogColor = DogColor.None;
         this.touchNode.on(Node.EventType.TOUCH_END, (event) => {
             console.log('room node touch down : roomIndex = ' + this.roomIndex);
             if ( this.roomState == RoomState.Free)
