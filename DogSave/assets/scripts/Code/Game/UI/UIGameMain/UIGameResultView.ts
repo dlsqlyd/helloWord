@@ -81,11 +81,7 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     {
         this._pop = new PopupAnim(this.node, {
             // 每次 playShow 都重新取 —— win/fail 切换后生效的按钮会变，不能在构造时取一次
-            extraTargets: () =>
-            {
-                const btn = this.activeButtonNode();
-                return btn != null ? [btn] : [];
-            },
+            extraTargets: () => this.activeButtonNodes(),
         });
         this._pop.resolve();
 
@@ -256,7 +252,8 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     }
 
     /**
-     * 结算弹窗的两个按钮。
+     * 结算弹窗里「下一关 / 重玩」这两个按钮的公共出口。
+     * （第三个按钮「复活」不走这里 —— 它不换关、不重铺，见 onRevive。）
      *
      * 弹窗自己**不认识关卡**（连 curFightLevelId 都不该知道），只把"玩家选了哪个"报上去；
      * 「下一关到底是第几关」交给 GameDataManager —— 只有它同时握着当前关卡号和关卡总数。
@@ -273,9 +270,26 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
 
     private onClickNext() { this.onResultButton(true); }
     private onClickReplay() { this.onResultButton(false); }
-    private onClickRevive() {
-        this.onResultButton(false);
+
+    /**
+     * 「复活」：**不重开本关**，把同一盘棋继续下去，只补时间。
+     *
+     * ⚠️ 原先这里是 `this.onResultButton(false)` —— 和「重玩」一字不差，
+     * 玩家看到「复活」、拿到「重玩」（盘面重铺、进度全丢）。那是**功能缺口**，
+     * 不是按钮绑错；现在改走 GameDataManager.ReviveLevel()：
+     * 盘面原样保留、levelState 回到 Playing、倒计时补一段。
+     *
+     * 顺序和 onResultButton 一致 ——「先收弹窗、再动作」，否则复活后盘面会在
+     * 弹窗底下先动起来，收起动画那 0.2 秒里玩家能看到穿帮。
+     */
+    private async onRevive()
+    {
+        console.log("[UIGameResultView] 点击 btn_revive（复活：补时继续本关）");
+        await this.closeSelf();
+        if (GameDataManager.instance != null) GameDataManager.instance.ReviveLevel();
     }
+
+    private onClickRevive() { this.onRevive(); }
 
     // -----------------------------------------------------------------------
     // 节点取用
@@ -286,20 +300,48 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         return this._pop != null ? this._pop.panel : null;
     }
 
-    /** 生效的变体节点（win_node / fail_node）里那个按钮；两个变体都关着时返回 null */
-    private activeButtonNode(): Node
+    /**
+     * 生效的变体（win_node / fail_node）里**所有**可见按钮；两个变体都关着时返回空数组。
+     *
+     * ⚠️ 这里以前只返回**一个**节点：
+     *        return owner.getChildByName(owner === winNode ? "btn_next" : "btn_replay");
+     *   而预制体 `uiGameResultView` 的 fail_node 下挂着**两个**按钮 ——
+     *   `btn_replay`（x=-140，"重玩"）和 `btn_revive`（x=+140，"复活"），同一排并排、
+     *   两个都是 active。于是 `btn_revive` 虽然挂了点击回调、也画在屏幕上，却不进
+     *   PopupAnim 的 `_targets`：
+     *     a) 不参与"按钮比底板晚一拍"的弹出 —— 重玩从 0.80 倍弹上来，复活一直停在 1.0 倍，
+     *        同一排两个按钮动作不一致；
+     *     b) 不参与 `setButtonsInteractable(false)` —— 弹出那 0.42s 里重玩点不动、复活点得动。
+     *
+     * 根因是**同一份按钮名单写了两处**（`bindButtons()` 一份、这里又手写一份），两份漂了。
+     * 所以改成**从变体的子节点里扫**：谁挂着 cc.Button 谁就是按钮 —— 名单不存在了，
+     * 以后预制体再加按钮也不会漏。
+     *
+     * 只扫**直接**子节点：预制体里按钮都是变体的直接子节点，没有再嵌一层。
+     * 判据见 `level_tools/verify_level_loop.py` 第 17 项。
+     */
+    private activeButtonNodes(): Node[]
     {
         const panel = this.panelNode();
-        if (panel == null) return null;
+        if (panel == null) return [];
 
         const winNode = panel.getChildByName("win_node");
         const failNode = panel.getChildByName("fail_node");
 
         const owner = (winNode != null && winNode.active) ? winNode
                     : ((failNode != null && failNode.active) ? failNode : null);
-        if (owner == null) return null;
+        if (owner == null) return [];
 
-        return owner.getChildByName(owner === winNode ? "btn_next" : "btn_replay");
+        const result: Node[] = [];
+        const children = owner.children;
+        for (let i = 0; i < children.length; i++)
+        {
+            const child = children[i];
+            if (!child.active) continue;
+            if (child.getComponent(Button) == null) continue;
+            result.push(child);
+        }
+        return result;
     }
 
     private buttonNode(variantName: string, buttonName: string): Node

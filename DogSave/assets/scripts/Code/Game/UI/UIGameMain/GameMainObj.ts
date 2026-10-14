@@ -3,7 +3,6 @@ import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
 import { GameDataManager, LevelConfig, LevelState } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
 import { DogColor, DogNode, DogState, DOG_SFX_HAPPY } from './DogNode';
-import { ANDROID } from '../../../../../../temp/declarations/cc.env';
 import { DoorNode, DoorState } from './DoorNode';
 import { RoomNode, RoomState } from './RoomNode';
 import { SoundManager } from '../../../Module/Resource/SoundManager';
@@ -70,6 +69,25 @@ export class GameMainObj extends Component {
             let doorNode:DoorNode = this.doorNodes[i];
             doorNode.doorIndex = i + 1;
             doorNode.doorState = i < lockIndex ? DoorState.Idle : DoorState.Lock;
+            // ⚠️ 颜色必须跟着一起复位，不能只复位 doorState。
+            //
+            // `lockIndex` 是**会变小**的：第 5 关是 2（门 0/1 都是 Idle、都被
+            // CreateWithColor 赋了色），第 6 关变成 1（门 1 转 Lock）。而
+            // `RefreshLock()` 只同步 adsBtn / dogIcon / 车门开合，**不碰 waitDogColor**
+            // ⇒ 门 1 带着第 5 关的颜色继续"等"。
+            //
+            // 后果不是"少一点观感"：`FlyToCar` 找门时**只看 waitDogColor、不看 doorState**，
+            //     for (let i = doorNodes.length - 1; i >= 0; i--)
+            //         if (doorNodes[i].waitDogColor == color) { toDoor = ...; break; }
+            // 找到之后紧接着 `toDoor.doorState = DoorState.Open` ⇒ 狗飞进**锁着的**门，
+            // 广告锁被整个绕过；而门还画成锁着的样子（adsBtn 亮着、dogIcon 被 RefreshLock 关掉）。
+            // 实测：100 关里 76 关的锁门带着残留色，且这 76 关的残留色**全部**出现在本关盘面上
+            // ⇒ 76 关全部可被真的利用。
+            //
+            // 清掉是安全的：第 8 项已经用严格模型（Lock 门没有颜色）证过 100/100 可解，
+            // 所以这一行只会让实机与模型一致，不可能让任何一关变得不可解。
+            // 判据见 level_tools/verify_level_loop.py 第 18 项。
+            doorNode.waitDogColor = DogColor.None;
             doorNode.RefreshLock();
         }
 
@@ -78,9 +96,9 @@ export class GameMainObj extends Component {
             let doorNode:DoorNode = this.doorNodes[i];
             if (doorNode.doorState == DoorState.Idle)
             {
-                //根据 现有椅子上的颜色 随机一个画出来，并且不要和另外的椅子上的颜色重复
-                let randomColor:DogColor = this.GetRandomDoorColor();
-                doorNode.CreateWithColor(randomColor);
+                // 取"盘面上第一根非空椅子最底下那只"的颜色（不是随机 —— 见该函数的注释）
+                let doorColor:DogColor = this.GetFirstChairBottomColor();
+                doorNode.CreateWithColor(doorColor);
             }
         }
 
@@ -89,9 +107,26 @@ export class GameMainObj extends Component {
             let roomNode:RoomNode = this.roomNodes[i];
             roomNode.roomIndex = i + 1;
             roomNode.roomState = i < 1 ? RoomState.Free : RoomState.Lock;
+            // ⚠️ 同门那边：颜色字段也要复位。狗窝的"里面有没有狗"**完全**由
+            // `sleepDogColor != DogColor.None` 决定（见 GameDataManager.SetSelectRoomId）——
+            // 非 None 时这个狗窝只能被"悬浮选中"、**收不了狗**。
+            //
+            // 而 `sleepDogColor` 只在 `RoomNode.start()` 里被置过一次 None，
+            // component 的 `start()` **一辈子只跑一次** ⇒ 换关没人清它。
+            // 于是：某一关带着狗窝里的狗超时判负（带着狗**不可能过关**：那只狗不在盘面上，
+            // 它的颜色永远凑不满一根椅子）⇒ 下一关这个狗窝**看着是空的**
+            // （下面那句 dogIcon.node.active = false 把它画没了）却**收不了狗**，
+            // 点它还会悬浮一只本关根本不存在的"幽灵狗"。
+            // 判据见 level_tools/verify_level_loop.py 第 18 项。
+            roomNode.sleepDogColor = DogColor.None;
             roomNode.dogIcon.node.active = false;
             roomNode.RefreshLock();
         }
+        // start() 每次换关都会被 GameDataManager.SetLevelCfgById() 重调，
+        // 而 Node.on 是**追加**、不去重 ⇒ 不先 off 的话每过一关就多挂一个监听，
+        // 玩到第 100 关时点一次 settingBtn 会触发 100 次回调。
+        // （同一个坑 UIGameResultView.bindButtons/unbindButtons 是成对写的。）
+        this.settingBtn.node.off(Button.EventType.CLICK, this.onClickEvent, this);
         this.settingBtn.node.on(Button.EventType.CLICK, this.onClickEvent, this);
 
         // timeText 的 @property 绑定是新增的（预制体里的 "timeText" 字段）。
@@ -117,9 +152,27 @@ export class GameMainObj extends Component {
         GameDataManager.instance.FinishLevel(true);
     }
 
+    /**
+     * 给一扇 Idle 的门挑一个"它在等的颜色"。
+     *
+     * ⚠️ 名字原先叫 `GetRandomDoorColor`，但**它一点都不随机**。
+     * 内层循环写的是
+     *     for (k...) if (list[j] != doorNodes[k].waitDogColor) { randomColor = list[j]; return ...; }
+     * —— 判据是「**存在**一扇门与候选色不同」，不是「**所有**门都与它不同」。
+     * 而盘面上永远至少有一扇 Lock 门（预制体 3 扇门，`lockIndex` 最大 2），
+     * Lock 门的 `waitDogColor` 是 `DogColor.None`(=0)，任何真实颜色(≥1)都 != 0
+     * ⇒ 第一个候选色必然命中。
+     * 所以它恒等于「**盘面上第一根非空椅子最底下那只狗的颜色**」——名字已按实际行为改成
+     * `GetFirstChairBottomColor`。判据见 level_tools/verify_level_loop.py 第 8 项
+     * （那一项的门色模型就是按这个行为建的：`first_nonzero_color`）。
+     *
+     * ⚠️ 想改成"真随机 / 真避重"（注释里原本声称的行为）之前先想清楚：
+     * 第 8 项的可解性证明是**按当前行为**建的，一改就得重跑那 100 关的搜索，
+     * 而且很可能有关卡会变得无解。当前行为本身是合理设计 —— 卡车在"指路"。
+     */
     GetRandomDoorColor() : DogColor
     {
-        let randomColor:DogColor = DogColor.None;
+        let doorColor:DogColor = DogColor.None;
         let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
         for (let i = 0; i < cfg.chairs.length; i++)
         {
@@ -132,14 +185,14 @@ export class GameMainObj extends Component {
                     {
                         if (list[j] !=  this.doorNodes[k].waitDogColor)
                         {
-                            randomColor = list[j];
-                            return randomColor;
+                            doorColor = list[j];
+                            return doorColor;
                         }
                     }
                 }
             }
         }
-        return randomColor;
+        return doorColor;
     }
 
 
@@ -156,8 +209,14 @@ export class GameMainObj extends Component {
         if (gdm.GetRemainSeconds() != before) this.RefreshTimeText();
     }
 
-    /** 把剩余秒数画到 time_txt 上。格式跟设计态一致："240秒" */
-    private RefreshTimeText()
+    /**
+     * 把剩余秒数画到 time_txt 上。格式跟设计态一致："240秒"
+     *
+     * public 是给**复活**用的：`update()` 只在"秒数变了"的时候才写 Label，
+     * 而复活把 curTime 从 0 直接跳到 30 —— 下一帧 before=30、after=ceil(29.98)=30，
+     * 前后相等 ⇒ 那一帧不写。不显式补这一下，盘面已经能动了、倒计时还停在"0秒"。
+     */
+    public RefreshTimeText()
     {
         if (this.timeText == null) return;
         this.timeText.string = `${GameDataManager.instance.GetRemainSeconds()}秒`;
@@ -167,8 +226,11 @@ export class GameMainObj extends Component {
     {
         let roomNode = this.GetRoomNode(roomId);
         let dogColor = roomNode.sleepDogColor;
-        roomNode.dogIcon.node.active = false;
+        // 先把 AnimDog 借到手再动 dogIcon。借不到就整个返回 —— 反过来写（先隐 dogIcon
+        // 再借）一旦池子空了，狗窝的图标被藏起来却没有人再放回来。
         let freeDog:DogNode = this.GetUnusedAnimDog();
+        if (freeDog == null) return;
+        roomNode.dogIcon.node.active = false;
         roomNode.AnimDog = freeDog;
         freeDog.AnimDog = roomNode.dogNode;
         let out:Vec3 = GameDataManager.instance.LocalToWorld(roomNode.dogIcon.node.parent, roomNode.dogIcon.node.position);
@@ -193,8 +255,11 @@ export class GameMainObj extends Component {
                 firstColor = dogNode.DogColor;
             if (firstColor == dogNode.DogColor)
             {
-                dogNode.node.active = false;
+                // 先借再隐。反过来写（先 `active = false` 再借）一旦借不到，这只狗会被
+                // 藏起来却没有悬浮拷贝 —— 凭空少一只。
                 let freeDog:DogNode = this.GetUnusedAnimDog();
+                if (freeDog == null) break;
+                dogNode.node.active = false;
                 dogNode.AnimDog = freeDog;
                 freeDog.AnimDog = dogNode;
                 let out:Vec3 = GameDataManager.instance.LocalToWorld(dogNode.node.parent, dogNode.node.position);
@@ -212,11 +277,17 @@ export class GameMainObj extends Component {
     PlayEndHoverByRoomId(roomId:number) 
     {
         let roomNode = this.GetRoomNode(roomId);
-        if (roomNode.AnimDog != null)
+        let animDog:DogNode = roomNode.AnimDog;
+        if (animDog != null)
         {
-            roomNode.AnimDog.PlayEndHover( ()=>{
-                this.PutAnimEndDog(roomNode.AnimDog);
-                roomNode.AnimDog = null;
+            // 立刻把字段摘下来。PlayEndHover 是个 0.1s 的 tween，回调要等动画跑完；
+            // 若把 `= null` 留在回调里，这 0.1s 内再点一次这个狗窝会**重新领一只并
+            // 覆盖字段**，旧动画回来时读到的就是新那只 —— 把一只正在悬浮的狗塞回池子，
+            // 随后被别人借走（两只共用一个节点），而旧那只永远回不来。
+            // 见 level_tools/verify_level_loop.py 第 9 项。
+            roomNode.AnimDog = null;
+            animDog.PlayEndHover( ()=>{
+                this.PutAnimEndDog(animDog);
                 roomNode.dogIcon.node.active = true;
             });
             
@@ -238,11 +309,14 @@ export class GameMainObj extends Component {
                 firstColor = dogNode.DogColor;
             if (firstColor == dogNode.DogColor)
             {
-                if (dogNode.AnimDog != null)
+                let animDog:DogNode = dogNode.AnimDog;
+                if (animDog != null)
                 {
-                    dogNode.AnimDog.PlayEndHover( ()=>{
-                        this.PutAnimEndDog(dogNode.AnimDog);
-                        dogNode.AnimDog = null;
+                    // 同 PlayEndHoverByRoomId：先摘字段再进动画。否则这 0.1s 内重新选中
+                    // 同一根椅子会借走新的一只，而旧回调把**新那只**还回池子。
+                    dogNode.AnimDog = null;
+                    animDog.PlayEndHover( ()=>{
+                        this.PutAnimEndDog(animDog);
                     });
                    
                 }
@@ -278,11 +352,14 @@ export class GameMainObj extends Component {
         }
 
 
-        if (roomNode.AnimDog != null)
+        let animDog:DogNode = roomNode.AnimDog;
+        if (animDog != null)
         {
-            roomNode.AnimDog.FlyToNear(reciveNode[0], ()=>{
-                this.PutAnimEndDog(roomNode.AnimDog);
-                roomNode.AnimDog = null;
+            // 同 PlayEndHoverByRoomId：FlyToNear 要飞 dis/2500 秒，这期间字段必须已经
+            // 是 null，否则重入时旧回调会把**新领的那只**还给池子。
+            roomNode.AnimDog = null;
+            animDog.FlyToNear(reciveNode[0], ()=>{
+                this.PutAnimEndDog(animDog);
                 roomNode.CreateWithColor(DogColor.None);
             });   
         }
@@ -345,13 +422,17 @@ export class GameMainObj extends Component {
 
         for (let i = 0; i < sendNode.length; i++)
         {
-            if (sendNode[i].AnimDog != null)
+            let animDog:DogNode = sendNode[i].AnimDog;
+            if (animDog != null)
             {
+                // 先摘字段再进动画（FlyToNear 要飞 dis/2500 秒）。顺带把两个分支的归还
+                // 都统一成"只还局部量" —— 第 9 项那条笨规则（实参必须是裸标识符）
+                // 才能管住整份文件，不用做控制流分析去分辨哪个分支在回调里。
+                sendNode[i].AnimDog = null;
                 if (i < reciveNode.length)
                 {
-                    sendNode[i].AnimDog.FlyToNear(reciveNode[i], ()=>{
-                        this.PutAnimEndDog(sendNode[i].AnimDog);
-                        sendNode[i].AnimDog = null;
+                    animDog.FlyToNear(reciveNode[i], ()=>{
+                        this.PutAnimEndDog(animDog);
                         sendNode[i].DogColor = DogColor.None;
                         sendNode[i].DogState = DogState.None;
                     });
@@ -359,8 +440,7 @@ export class GameMainObj extends Component {
                 else
                 {
                     sendNode[i].node.active = true;
-                    this.PutAnimEndDog(sendNode[i].AnimDog);
-                    sendNode[i].AnimDog = null;
+                    this.PutAnimEndDog(animDog);
                 }
             }
         }
@@ -404,19 +484,26 @@ export class GameMainObj extends Component {
                 chairNode.sortDog[i].FlyToCarDoor(i*0.1, toDoor);
             }
         }, 0.3);
+        // ⚠️ 这里**原来**还有一个 scheduleOnce(0.3) 把 chairNode.bg / chairNode.touchNode
+        //    关掉 —— 那是原版 Cat Sort 的行为：一根椅子把狗全送走之后整根**消失**，
+        //    这一关之内既看不见也点不着（点击监听挂在 touchNode 上，见 ChairNode.ts:56）。
+        //    ⚠️ 注意**不能**改成关 `chairNode.node.active`：正在飞的那批狗是椅子的子节点
+        //    （sortDog → layout/slot1..slot6），关掉父节点会连狗带粒子拖尾一起不渲染。
+        //
+        // 现在**整块删掉**：送完狗的椅子留在原地，当成一个**额外的空位**继续可用。
+        // 理由：盘面上"一根椅子空了"本来就是合法状态（开局就可能有空椅），
+        // 让它消失反而把玩家的可用空间偷偷收走了 —— 而且**观感上像 bug**。
+        //
+        // 可解性没受影响：第 5 项用的就是"椅子留着当额外空位"的模型（100/100 可解），
+        // 第 13 项用"飞过的椅子直接摘掉"的模型也证了 100/100 —— 两种都过，所以这个改动
+        // 只会让实机**更宽松**，不会让任何一关变得不可解。
+        // 判据见 level_tools/verify_level_loop.py 第 5 / 13 项。
+        //
+        // 副作用（有意为之）：`ChairNode.RefreshAllSlot()` 换关时那句"把 bg/touchNode 放回来"
+        // 现在是空转 —— 它们从来没被关过。留着不动，幂等。
         this.scheduleOnce(() => {
-            // ⚠️ 这里**不能**写 chairNode.node.active = false。
-            // 上面那批正在 FlyToCarDoor 的狗是椅子的子节点（sortDog → layout/slot1..slot6），
-            // 关掉整个 chairNode 会连狗带粒子拖尾一起停止渲染 —— 1 秒的飞行动画整个看不见。
-            // （Node.isChildOf 要求父节点 active，所以父节点一关子节点就"消失"。）
-            // 只收掉椅子的美术和点击，留着 layout 让狗继续飞。
-            // 复用：ChairNode.RefreshAllSlot 会把这两个重新打开。
-            if (chairNode.bg) chairNode.bg.active = false;
-            if (chairNode.touchNode) chairNode.touchNode.active = false;
-        }, 0.3);
-        this.scheduleOnce(() => {
-            let randomColor:DogColor = this.GetRandomDoorColor();
-            toDoor.CreateWithColor(randomColor);
+            let doorColor:DogColor = this.GetFirstChairBottomColor();
+            toDoor.CreateWithColor(doorColor);
             callback();
         }, 2);
         return true;
@@ -458,13 +545,15 @@ export class GameMainObj extends Component {
 
         for (let i = 0; i < sendNode.length; i++)
         {
-            if (sendNode[i].AnimDog != null)
+            let animDog:DogNode = sendNode[i].AnimDog;
+            if (animDog != null)
             {
+                // 同 FlyToSameColorChair：先摘字段再进动画，且两个分支都只还局部量。
+                sendNode[i].AnimDog = null;
                 if (i == 0)
                 {
-                    sendNode[i].AnimDog._FlyToRoom(roomNode, ()=>{
-                        this.PutAnimEndDog(sendNode[i].AnimDog);
-                        sendNode[i].AnimDog = null;
+                    animDog._FlyToRoom(roomNode, ()=>{
+                        this.PutAnimEndDog(animDog);
                         sendNode[i].DogColor = DogColor.None;
                         sendNode[i].DogState = DogState.None;
                     });
@@ -472,8 +561,7 @@ export class GameMainObj extends Component {
                 else
                 {
                     sendNode[i].node.active = true;
-                    this.PutAnimEndDog(sendNode[i].AnimDog);
-                    sendNode[i].AnimDog = null;
+                    this.PutAnimEndDog(animDog);
                 }
             }
         }
@@ -482,6 +570,18 @@ export class GameMainObj extends Component {
     GetUnusedAnimDog() : DogNode
     {
         let freeDog:DogNode = this.NoUsedDogs.pop(); //从末尾拿出来
+        if (freeDog == null)
+        {
+            // 池子只有 12 只（uiGameMainView.prefab 的 NoUsedDogs 数组，12 个
+            // cc.TargetOverrideInfo 接进去），正常玩法同时最多借 6 只（PlayHoverUp
+            // 一次借走选中椅子整列同色的狗）。走到这里说明有 AnimDog 借出去没还回来。
+            // 别硬闯 `freeDog.node` —— 那会在某个 tween 回调里抛 TypeError，
+            // 栈上看不出是谁借漏了。留一条能指路的日志。
+            console.error("[AnimDog] 池子空了：有 AnimDog 借出未归还。"
+                          + "检查 PlayHoverUp / PlayEndHover / FlyToNear / _FlyToRoom "
+                          + "这几处的重入路径（见 level_tools/verify_level_loop.py 第 9 项）");
+            return null;
+        }
         this.UsingdDogs.unshift(freeDog);//添加到头部
         freeDog.node.active = true;
         return freeDog;
@@ -497,7 +597,10 @@ export class GameMainObj extends Component {
         {
             if (this.UsingdDogs[i] == dog)
             {
-                this.UsingdDogs.splice(i);
+                // `splice(i)` 是"从 i 删到末尾"，会把后面还在飞的狗一起踢出记录；
+                // 这里只该摘掉这一只。这张表目前没人读，所以一直没暴露，
+                // 但它记的是"正在飞的那些狗"，留着错的迟早会咬人。
+                this.UsingdDogs.splice(i, 1);
                 break;
             }
         }

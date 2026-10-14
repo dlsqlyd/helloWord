@@ -1,3 +1,4 @@
+import { BlockInputEvents, Node, UITransform, view } from "cc";
 import { IOnCreate } from "../../../Module/UI/IOnCreate";
 import { IOnDisable } from "../../../Module/UI/IOnDisable";
 import { IOnEnable } from "../../../Module/UI/IOnEnable";
@@ -38,11 +39,55 @@ export class UIMsgBoxWin extends UIBaseView implements IOnCreate,IOnEnable<MsgBo
      * 预制体里**没有遮罩节点**（根自己就是那块白底板，两个按钮是它的直接子节点），
      * 所以这套动画只有"淡入 + 缩放弹出"两层，没有遮罩那一层 —— PopupAnim 允许 dim 为 null，
      * 底板会退回 `root`。
+     *
+     * ⚠️ 动画没有遮罩 ≠ 可以不做模态。输入那一层由 `ensureInputBlocker()` 在运行时补上
+     * （全屏 `BlockInputEvents`），两件事是分开的：`PopupAnim` 的 dim 负责**画面**，
+     * 挡板负责**输入**。
      */
     private _pop: PopupAnim = null;
 
     /** 收起动画只允许触发一次：双击不能让 closeSelf() 跑两遍 */
     private _closing: boolean = false;
+
+    /**
+     * 运行时补的全屏"输入挡板"。见 ensureInputBlocker()。
+     */
+    private _blocker: Node = null;
+
+    /**
+     * 让这个弹窗变成**模态**。
+     *
+     * ⚠️ 预制体 `uiMsgBoxWin` 里**没有遮罩节点**（根自己就是那块 460×320 的白底板，
+     *    两个按钮是它的直接子节点）—— 也就是说它只是"画在上面"，**并不拦输入**：
+     *    Cocos 里一个 `cc.Sprite` 本身不吃事件，点到底板**外面**会穿到后面的界面上。
+     *    对确认框来说这是真问题（点空白处等于点了背后的东西）。
+     *
+     * 不去改预制体（那要重排节点、还得手工补 __id__ 索引，风险大收益小），
+     * 改成运行时补一块**全屏的 `BlockInputEvents` 节点**：
+     *   · 尺寸取 `view.getVisibleSize()`（设计分辨率下的可视区），适配任何分辨率；
+     *   · 位置取 `-this.node.position`，把它的世界坐标摆回原点 —— 底板一般居中，
+     *     但这样写就不依赖"底板必须在屏幕正中"这个假设；
+     *   · `setSiblingIndex(0)` ⇒ 排在所有子节点**最前** = 画在底板**下面**，
+     *     只挡"底板之外"的输入，不会挡住底板自己的两个按钮。
+     *
+     * 幂等：节点复用（对象池）时 `_blocker` 还在就直接返回，不重复建。
+     */
+    private ensureInputBlocker()
+    {
+        if (this._blocker != null && this._blocker.isValid) return;
+
+        const node = new Node("InputBlocker");
+        const t = node.addComponent(UITransform);
+        const size = view.getVisibleSize();
+        t.setContentSize(size.width, size.height);
+        node.addComponent(BlockInputEvents);
+
+        this.node.addChild(node);
+        node.setSiblingIndex(0);
+        node.setPosition(-this.node.position.x, -this.node.position.y, 0);
+
+        this._blocker = node;
+    }
 
     public onCreate(){
         this.text = this.addComponent<UIText>(UIText,"Text");
@@ -67,6 +112,9 @@ export class UIMsgBoxWin extends UIBaseView implements IOnCreate,IOnEnable<MsgBo
     public onEnable(a: MsgBoxPara){
         this.para = a;
         this._closing = false;
+        // 先把输入挡板补上，再摆内容/播动画 —— 挡板必须在这一次显示期间就位，
+        // 否则弹出那 0.42s 里点到底板外面会穿到背后（见 ensureInputBlocker）
+        this.ensureInputBlocker();
         this.text.setText(a.content);
         this.btn_cancel.setOnClick(this.onClickCancel.bind(this));
         this.btn_confirm.setOnClick(this.onClickConfirm.bind(this));

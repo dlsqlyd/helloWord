@@ -1,5 +1,5 @@
 import { Camera, find, Mat4, Node, UITransform, Vec3, _decorator, view, Vec2, Layers } from 'cc';
-import { IManager } from "../../../Mono/Core/Manager/IManager"
+import { IManager } from "../../Mono/Core/Manager/IManager"
 import { JsonType } from '../../Mono/Helper/JsonHelper';
 import { DateItem } from './UI/UIMain/DateItem';
 import { CacheManager } from '../Module/Player/CacheManager';
@@ -112,7 +112,23 @@ export class GameDataManager implements IManager {
             let data = this.datas.data[i];
             this.leveldict.set(data.id, data);
         }
-        this.curFightLevelId = 56;//CacheManager.instance.getInt("FightLevelId", 1);
+        // 进度从缓存读，没有存档就从第 1 关开始。
+        //
+        // 原先这里是 `this.curFightLevelId = 56;` 且把读取**注释掉了**，
+        // 于是「进度只写不读」：SetLevelCfgById() 每关都把关卡号写进缓存，
+        // 重启却永远回到第 56 关，1–55 关根本走不到。
+        //
+        // 这里读缓存是安全的：CacheManager 在 Entry.ts:41 注册、比本管理器(:83)早，
+        // 且 ManagerProvider.registerManager 会**同步**调 init()（见那里第 47 行），
+        // 所以走到这一行时 CacheManager._instance 一定已经建好了。
+        //
+        // ⚠️ 调试时想固定从某一关起，把下面这行换成： this.curFightLevelId = 56;
+        this.curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
+        // 夹到合法区间。上界这条原来就有；下界是新加的 ——
+        // 存档被改坏（0 / 负数）时 GetLevelCfgById 会返回 undefined，
+        // 紧接着 CloneLevelCfg 读 oldCfg.id 直接崩。
+        if (this.curFightLevelId < 1)
+            this.curFightLevelId = 1;
         if (this.curFightLevelId > this.datas.data.length)
             this.curFightLevelId = this.datas.data.length;
         let cfg2:LevelConfig = GameDataManager.instance.GetLevelCfgById(this.curFightLevelId);
@@ -193,7 +209,18 @@ export class GameDataManager implements IManager {
         this.levelState = LevelState.Playing;
     }
 
-    /** 每帧倒计时。只有 Playing 期间才走；归零直接判失败 */
+    /**
+     * 每帧倒计时。只有 Playing 期间才走。
+     *
+     * ⚠️ 归零时**先看盘面清没清空**，不能无条件判失败。
+     * 清盘是异步的：最后一批狗「飞向卡车」时，CheckDogFlyToCar 会**先把数据置 0、
+     * 再播飞行动画**（见那里的注释），而过关要等动画播完、回调再进一次
+     * CheckDogFlyToCar 才宣布。这段窗口里 IsBoardClear() 已经是 true、levelState 还停在
+     * Playing —— 无条件判失败，就会让**已经把狗清完**的玩家在最后一秒吃败仗。
+     *
+     * 这里补判一次：盘面已空 ⇒ 直接判过关。FinishLevel 是幂等的，
+     * 随后那次回调再判也不会翻盘。
+     */
     public TickLevel(deltaTime: number): void
     {
         if (this.levelState != LevelState.Playing) return;
@@ -201,7 +228,9 @@ export class GameDataManager implements IManager {
         if (this.curTime <= 0)
         {
             this.curTime = 0;
-            this.FinishLevel(false);
+            // `_levelHasDogs` 与 CheckDogFlyToCar 的过关钩子用同一判据，
+            // 一起挡掉「空关卡开局就过关」那种退化情况。
+            this.FinishLevel(this._levelHasDogs && this.IsBoardClear());
         }
     }
 
@@ -231,6 +260,31 @@ export class GameDataManager implements IManager {
     {
         if (this.levelState != LevelState.Playing) return;
         this.levelState = isWin ? LevelState.Win : LevelState.Lose;
+
+        // ⚠️ 先把还悬着的狗放回椅子，**再**清选中态 —— 顺序不能反。
+        //    下面两行把 curSelectChairIdx / curSelectRoomIdx 清成 -1 之后，
+        //    就再也说不出"哪根椅子在悬浮"了，那批 AnimDog 就永远回不了池子。
+        //
+        // 为什么必须在这里做：悬浮中的狗是从 AnimDog 池**借**出来的（PlayHoverUp），
+        // 只有 PlayEndHover / PlayEndHoverByRoomId 会还。而换关时 RefreshAllSlot 走的
+        // DogNode.StopAnim() **不还**（它只停 one-shot / 拖尾 / 剪辑，见 DogNode.ts:480）——
+        // 也就是说这个漏**不会自愈**。
+        // 于是：倒计时归零时玩家正选中一根椅子（狗悬在半空）⇒ 最多 6 只 AnimDog 漏掉，
+        // 它们 node.active 还是 true（GetUnusedAnimDog 打开过），下一关就变成骑在椅子上的
+        // 幽灵狗；池子一共 12 只，**两次**就把悬浮功能整个搞停（GetUnusedAnimDog 会返回
+        // null 并打日志，之后选中椅子不再有悬浮）。
+        //
+        // 放在 FinishLevel 是因为**所有**关卡出口都汇到这里（超时 / 清盘 / 调试用的
+        // onClickEvent），所以这一处就够，不用在每个出口各写一遍。
+        // 判据见 level_tools/verify_level_loop.py 第 15 项。
+        if (this.gameMainObj != null)
+        {
+            if (this.curSelectChairIdx >= 0)
+                this.gameMainObj.PlayEndHover(this.curSelectChairIdx);
+            if (this.curSelectRoomIdx > 0)
+                this.gameMainObj.PlayEndHoverByRoomId(this.curSelectRoomIdx);
+        }
+
         this.curSelectChairIdx = -1;
         this.curSelectRoomIdx = -1;
         this.ShowResult(isWin);
@@ -246,6 +300,36 @@ export class GameDataManager implements IManager {
     public OnResultButton(isNext: boolean): void
     {
         this.SetLevelCfgById(isNext ? this.curFightLevelId + 1 : this.curFightLevelId);
+    }
+
+    /** 复活一次补多少秒。纯平衡参数，随时可调（正式值等策划定） */
+    public static readonly REVIVE_EXTRA_SECONDS: number = 30;
+
+    /**
+     * 复活：把**同一盘棋继续下去**，只补时间，不重铺。
+     *
+     * 和「重玩」是两条不同的路：
+     *   · 重玩 = `OnResultButton(false)` → `SetLevelCfgById(当前关)` → 重新铺盘（进度全丢）
+     *   · 复活 = 这一支 → 盘面原样保留，`levelState` 回到 Playing，倒计时重新给一段
+     * 原先是同一个函数（`onClickRevive` 直接调 `onResultButton(false)`），
+     * 玩家看到「复活」、拿到「重玩」—— 那是个**功能缺口**，不是动画问题。
+     *
+     * 只有 `Lose` 才允许复活：赢了没有"复活"这一说，而 `Playing` 期间这个弹窗根本不存在。
+     * 这个早退同时也是**幂等保护** —— 连点两下只补一次时间。
+     */
+    public ReviveLevel(): void
+    {
+        if (this.levelState != LevelState.Lose) return;
+
+        this.curTime = GameDataManager.REVIVE_EXTRA_SECONDS;
+        this.levelState = LevelState.Playing;
+
+        // 盘面**不重铺** ⇒ `_levelHasDogs` 不用动（它记的是"这一关开局有没有狗"，
+        // 复活不改这个事实）。`FinishLevel` 里清掉的 curSelectChairIdx/curSelectRoomIdx
+        // 也保持 -1：复活后没有选中任何东西，玩家要重新点。
+        //
+        // 倒计时 Label 必须显式刷一次，理由见 GameMainObj.RefreshTimeText 的注释。
+        if (this.gameMainObj != null) this.gameMainObj.RefreshTimeText();
     }
 
     private async ShowResult(isWin: boolean): Promise<void>
@@ -276,6 +360,17 @@ export class GameDataManager implements IManager {
                     roomNode.CreateWithColor(DogColor.None);
                     this.gameMainObj.FlyToSameColorChairFromRoomId(this.curSelectRoomIdx, chairId);
                     this.curSelectRoomIdx = -1;
+                    // ⚠️ 这条路上也可能把椅子**集满** —— 椅子已有 5 只同色、狗窝那只
+                    // 正好补上第 6 只（穷举合法盘面下来这是**唯一**能集满的形态，
+                    // 见 level_tools/verify_level_loop.py 第 14 项）。而"集满就飞向卡车"
+                    // 的触发原先只挂在椅子→椅子那条路末尾（本函数下面那个 scheduleOnce）。
+                    //
+                    // 漏掉这一条 ⇒ 椅子明明集满了却不飞，玩家再走一步**无关**的棋它才飞；
+                    // 盘面要是再也走不出椅子→椅子的步子，就只能干等超时判负。
+                    // 延迟 1s 与那条路保持一致：数据是同步写好的，等的是飞行动画。
+                    this.gameMainObj.scheduleOnce(() => {
+                        this.CheckDogFlyToCar();
+                    }, 1);
                     break;
                 }
             }
@@ -323,15 +418,35 @@ export class GameDataManager implements IManager {
         {
             if (roomNode.sleepDogColor == DogColor.None)
             {
-                if (this.curSelectChairIdx > 0) //飞到room
+                // ⚠️ 判据是 `>= 0`，不是 `> 0`。椅子的 chairId 是 **0 基**的
+                // （GameMainObj.start 里 `RefreshAllSlot(cfg.chairs[i].dogs, i)` 传的就是 i），
+                // 而 roomIndex / doorIndex 是 **1 基**的（`roomIndex = i + 1`）——
+                // 两套编号混在同一个文件里，很容易顺手写错。
+                // 写成 `> 0` 的后果：**选中第 1 根椅子再点狗窝，什么都发生不了**（死点击）。
+                // 空选中态用的是 -1（见 StartLevel / FinishLevel），所以 `>= 0` 才是
+                // "有椅子被选中"。上面 SetSelectChairId 用的也是 `< 0` 判空，两处要对齐。
+                if (this.curSelectChairIdx >= 0) //飞到room
                 {
                     this.gameMainObj.FlyToRoom(this.curSelectChairIdx, roomId);
                     let chairData = this.curLevelConfig.chairs[this.curSelectChairIdx];
-                    for (let i = 0; i < chairData.dogs.length; i++)
+                    // ⚠️ 从**顶部**摘一只，不是从底部 —— 循环方向必须是末尾往 0 扫。
+                    //
+                    // 盘面数据的约定是「下标越大越靠上」：下标 0 = 椅底，末尾 = 椅顶。
+                    // 三条独立佐证：① RefreshAllSlot 用 `bornDelay = i * BORN_STAGGER`
+                    // 让整列"自下而上依次弹出"；② 上面 room→椅子 那段的插入条件是
+                    // `dogs[i-1] == 房间颜色`（i-1 在 i 的下面）；③ ChangeChairDogColor
+                    // 装填时从下标 0 往上、摘除时从末尾往下。
+                    //
+                    // 而视图侧 FlyToRoom 送走的是 `sendNode[0]` —— 从 length-1 往下扫出的
+                    // 第一个非空，也就是**最顶上那只**。原先这里是从 0 往上找"第一个非空"，
+                    // 摘掉的是**最底下那只** ⇒ 数据与画面对不上；更糟的是会写出
+                    // `dogs[0] == 0` 这种非法盘面（椅子底下空着、上面还压着狗），
+                    // 之后 IsCanChange / ChangeChairDogColor 会把它当成"底部有空位"
+                    // 一路错下去（R1：椅子不许有空洞）。
+                    for (let i = chairData.dogs.length - 1; i >= 0; i--)
                     {
                         if (chairData.dogs[i] > 0)
                         {
-                            // roomNode.CreateWithColor(chairData.dogs[i]);
                             chairData.dogs[i] = 0;
                             break;
                         }

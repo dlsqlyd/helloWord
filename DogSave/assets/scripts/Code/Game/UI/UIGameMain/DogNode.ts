@@ -131,7 +131,26 @@ export class DogNode extends Component {
         return this.dogIcon ? this.dogIcon.node : null;
     }
 
+    /**
+     * 停掉挂在本组件上的 tween。
+     *
+     * ⚠️ **两个目标都要停，缺一不可** —— 本类的 tween 分两拨，目标**不是同一个节点**：
+     *   · `PlayDrop()` → `tween(dog)`，`dog = this._dogNode`（**子**节点 dogIcon）
+     *   · `PlayEndHover` / `FlyToNear` / `_FlyToRoom` / `FlyToCarDoor` / `FlyToRoom`
+     *     → `tween(this.node)`（**根**节点）
+     * 原先只停了子节点 ⇒ 那 5 个飞行 tween **一个都停不掉**。`StopAnim()`（以及
+     * `ChairNode.RefreshAllSlot()` 里那句）看着像"把上一关的飞行收掉"，其实只收了姿态那条。
+     *
+     * 一直没出事，只是因为飞行都很短（`FlyToCarDoor` 的 delay ≤ 0.5s + `dis/2500` ≈ 0.4s），
+     * 在换关之前自己就跑完了 —— **靠的是"侥幸足够短"，不是代码成立**。而
+     * `FlyToCarDoor` 的 onComplete 里写着 `this.node.active = false`：一旦有飞行跨过关，
+     * 新一关刚被 RefreshAllSlot 放回来的狗会被它重新藏起来。
+     *
+     * 判据见 `level_tools/verify_level_loop.py` 第 10 项：它要求每个 `tween(X)` 的 X
+     * 都能在下面找到**同名**的 stopAllByTarget —— 加新 tween 忘了配，那条检查会响。
+     */
     public _stopTween() {
+        Tween.stopAllByTarget(this.node);
         const dog = this._dogNode;
         if (dog) Tween.stopAllByTarget(dog);
     }

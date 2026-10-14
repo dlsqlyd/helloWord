@@ -1,7 +1,7 @@
 import { _decorator, Button, Component, Label, Node, Sprite } from 'cc';
 import { DogColor, DogNode } from './DogNode';
 import { ImageLoaderManager } from '../../../Module/Resource/ImageLoaderManager';
-import { GameDataManager } from '../../GameDataManager';
+import { GameDataManager, LevelState } from '../../GameDataManager';
 const { ccclass, property } = _decorator;
 
 export enum RoomState {
@@ -42,6 +42,32 @@ export class RoomNode extends Component {
             if ( this.roomState == RoomState.Free)
                 GameDataManager.instance.SetSelectRoomId(this.roomIndex);
         }, this);
+
+        // 「看广告解锁狗窝」的点击入口 —— 同 DoorNode.start() 那处：
+        // 全工程原先没有任何地方给 adsBtn 挂监听，"看广告解锁"整条流程是空的。
+        // 接真广告 SDK 时把 onAdsUnlock() 挪进"广告成功"的回调即可。
+        // `start()` 一辈子只跑一次，仍按惯例先 off 再 on。
+        this.adsBtn.node.off(Button.EventType.CLICK, this.onAdsUnlock, this);
+        this.adsBtn.node.on(Button.EventType.CLICK, this.onAdsUnlock, this);
+    }
+
+    /**
+     * 广告看完之后解锁这个狗窝。
+     *
+     * 比门那边简单：狗窝没有"在等的颜色"这回事（`sleepDogColor` 表达的是
+     * **里面有没有狗**，不是"在等什么色"），所以只把 state 改成 Free 就够了 ——
+     * 之后 `touchNode` 那条 TOUCH_END 判据就会放行、能收狗了。
+     */
+    private onAdsUnlock()
+    {
+        // 结算弹窗弹出后盘面冻住，这时不该还能解锁（同 DoorNode.onAdsUnlock）
+        if (GameDataManager.instance == null) return;
+        if (GameDataManager.instance.levelState != LevelState.Playing) return;
+        // 幂等：只有锁着的狗窝才需要解锁
+        if (this.roomState != RoomState.Lock) return;
+
+        this.roomState = RoomState.Free;
+        this.RefreshLock();     // adsBtn 随之隐藏
     }
 
     update(deltaTime: number) {
