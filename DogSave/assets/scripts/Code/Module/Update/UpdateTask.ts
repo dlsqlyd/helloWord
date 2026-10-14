@@ -84,11 +84,13 @@ export class UpdateTask {
             this.msgBoxPara.cancelText = cancelText;
             this.msgBoxPara.confirmCallback = (win: UIBaseView) => {
                 resolve(true);
-                UIManager.instance.closeBox(win);
+                // 走 win.closeSelf() 而不是 UIManager.closeBox(win)：
+                // 弹窗把"收起动画"接在 closeSelf() 上，直接 closeBox 会跳过动画、瞬间消失
+                win.closeSelf();
             };
             this.msgBoxPara.cancelCallback = (win: UIBaseView) => {
                 resolve(false);
-                UIManager.instance.closeBox(win);
+                win.closeSelf();
             };
             await UIManager.instance.openBox<UIMsgBoxWin, MsgBoxPara>(
                 UIMsgBoxWin, UIMsgBoxWin.PrefabPath,

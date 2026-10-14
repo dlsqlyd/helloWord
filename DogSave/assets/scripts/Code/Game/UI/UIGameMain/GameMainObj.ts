@@ -1,6 +1,6 @@
-import { _decorator, Button, Component, Label, Node, Vec3 } from 'cc';
+import { _decorator, Button, Component, find, Label, Node, Vec3 } from 'cc';
 import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
-import { GameDataManager, LevelConfig } from '../../GameDataManager';
+import { GameDataManager, LevelConfig, LevelState } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
 import { DogColor, DogNode, DogState, DOG_SFX_HAPPY } from './DogNode';
 import { ANDROID } from '../../../../../../temp/declarations/cc.env';
@@ -17,6 +17,16 @@ export class GameMainObj extends Component {
       
     @property(Label)
     public levelText: Label;
+
+    /**
+     * 顶部倒计时文案（预制体里的 `bg/TopNode/timeBg/time_txt`，设计态写死的是 "120秒"）。
+     *
+     * 这个 Label 在预制体里一直存在、也一直显示，但**从来没有任何代码写过它** ——
+     * 也就是说它显示的是一个和当前关卡无关的假数字。真正的倒计时在
+     * GameDataManager.curTime 里，这里只负责把它画出来（见 update / RefreshTimeText）。
+     */
+    @property(Label)
+    public timeText: Label;
     
     @property(Button)
     public settingBtn: Button;
@@ -83,11 +93,28 @@ export class GameMainObj extends Component {
             roomNode.RefreshLock();
         }
         this.settingBtn.node.on(Button.EventType.CLICK, this.onClickEvent, this);
+
+        // timeText 的 @property 绑定是新增的（预制体里的 "timeText" 字段）。
+        // 兜底：万一编辑器没把这条绑定读进来（或有人在编辑器里解绑了），按路径再找一次。
+        // 路径取自预制体的实际结构 bg/TopNode/timeBg/time_txt，名字唯一，
+        // 不踩"同名子节点只认第一个"的坑（结算弹窗那两个同名 bg 就是被这个坑过的）。
+        if (this.timeText == null)
+        {
+            let timeNode: Node = find("bg/TopNode/timeBg/time_txt", this.node);
+            if (timeNode != null) this.timeText = timeNode.getComponent(Label);
+        }
+
+        // 倒计时是"这一关"的状态，必须在**铺完盘之后**才启动。
+        // start() 每次换关都会被 GameDataManager.SetLevelCfgById 再调一遍，
+        // 所以这里同时也是"重开一关时把倒计时重置"的地方。
+        GameDataManager.instance.StartLevel();
+        this.RefreshTimeText();
     }
 
     private async onClickEvent(button: Button){
         console.log('onClickEvent setting');
-        await UIManager.instance.openBox(UIGameResultView,UIGameResultView.PrefabPath);
+        // await UIManager.instance.openBox(UIGameResultView,UIGameResultView.PrefabPath);
+        GameDataManager.instance.FinishLevel(true);
     }
 
     GetRandomDoorColor() : DogColor
@@ -118,7 +145,22 @@ export class GameMainObj extends Component {
 
 
     update(deltaTime: number) {
-        
+        let gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null || gdm.levelState != LevelState.Playing) return;
+
+        // 只在"秒数真的变了"的时候写 Label —— 给 Label.string 赋值会触发重新排版，
+        // 每帧无脑写等于每帧重排一次文字。
+        // 顺带一提 deltaTime 是秒，和关卡表里的 time（秒）同一量纲。
+        let before: number = gdm.GetRemainSeconds();
+        gdm.TickLevel(deltaTime);
+        if (gdm.GetRemainSeconds() != before) this.RefreshTimeText();
+    }
+
+    /** 把剩余秒数画到 time_txt 上。格式跟设计态一致："240秒" */
+    private RefreshTimeText()
+    {
+        if (this.timeText == null) return;
+        this.timeText.string = `${GameDataManager.instance.GetRemainSeconds()}秒`;
     }
 
     PlayHoverUpByRoomId(roomId:number) 

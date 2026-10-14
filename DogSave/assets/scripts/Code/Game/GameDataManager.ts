@@ -10,6 +10,8 @@ import { ready } from '../../../../extensions/taowu-editor/source/panel';
 import { RoomNode, RoomState } from './UI/UIGameMain/RoomNode';
 import { DogColor, DOG_SFX_SAD } from './UI/UIGameMain/DogNode';
 import { SoundManager } from '../Module/Resource/SoundManager';
+import { UIManager } from '../Module/UI/UIManager';
+import { ResultPara, UIGameResultView } from './UI/UIGameMain/UIGameResultView';
 
 // 坐标转换用的临时矩阵。这两个函数在飞行动画里会逐帧调用，
 // 每次 new Mat4 会白白产生垃圾，所以复用。
@@ -42,6 +44,24 @@ export class LevelChairData {
     public dogs: number[];
 }
 
+/**
+ * 一关的进行状态。
+ *
+ * 只有 `Playing` 期间才倒计时、才接受点击 —— 结算弹窗弹出来之后盘面必须冻住，
+ * 否则玩家还能继续搬狗，搬完又会触发一次过关判定（弹窗叠弹窗）。
+ */
+export enum LevelState
+{
+    /** 还没开始（或已经结算完关掉了） */
+    None,
+    /** 进行中 */
+    Playing,
+    /** 已过关，等玩家选「下一关 / 重玩」 */
+    Win,
+    /** 已超时，等玩家选「重玩」 */
+    Lose,
+}
+
 export class GameDataManager implements IManager {
     private static _instance: GameDataManager;
     private datas: LevelDatas;
@@ -51,6 +71,18 @@ export class GameDataManager implements IManager {
     private curSelectRoomIdx:number = -1;
     public curLevelConfig:LevelConfig;
     public gameMainObj:GameMainObj;
+
+    // ---------------------------------------------------------------- 关卡流程
+    /** 本关剩余秒数。归零算失败（关卡表的 time 字段，见 level_tools/level_rules.py） */
+    public curTime: number = 0;
+    /** 本关状态。见 LevelState */
+    public levelState: LevelState = LevelState.None;
+    /**
+     * 开局时盘面上到底有没有狗。
+     * 用来挡住「空关卡一铺完盘就立刻判定过关」这个退化情况 ——
+     * IsBoardClear() 对空盘面恒为 true，不记这一笔的话空关卡会秒过。
+     */
+    private _levelHasDogs: boolean = false;
 
 
     public static get instance(): GameDataManager {
@@ -133,12 +165,105 @@ export class GameDataManager implements IManager {
         if (this.curFightLevelId > this.datas.data.length)
             this.curFightLevelId = this.datas.data.length;
         this.curLevelConfig = this.CloneLevelCfg(GameDataManager.instance.GetLevelCfgById(this.curFightLevelId));
-        CacheManager.instance.setInt("FightLevelId", levelId)
+        // 写的是**夹过之后**的 curFightLevelId，不是入参 levelId。
+        // 在最后一关点「下一关」时入参是 101，原先会把 101 存进缓存 —— 存的是个不存在的关卡号。
+        CacheManager.instance.setInt("FightLevelId", this.curFightLevelId)
         this.gameMainObj.start();
+    }
+
+    // ---------------------------------------------------------------- 关卡流程
+    //
+    // 一关的生命周期：
+    //   GameMainObj.start() 铺完盘 -> StartLevel() -> 每帧 TickLevel()
+    //   -> 盘面清空(IsBoardClear) 或 倒计时归零 -> FinishLevel() -> 弹结算框
+    //   -> 玩家点按钮 -> OnResultButton() -> SetLevelCfgById() -> 回到 start()
+    //
+    // 过关判定为什么挂在 CheckDogFlyToCar 的"扫完没得飞"这一步：
+    //   狗是"同色聚满一根椅子 -> 飞向卡车 -> 椅子清空"这样一波波走的，
+    //   整个级联走完的标志就是"这一轮扫下来没有任何椅子能起飞"。
+    //   那一刻盘面若已全空，就是过关。不需要另开定时器去轮询。
+
+    /** 开一关：重置倒计时与选中态。GameMainObj.start() 里调（每次铺盘都会走一遍） */
+    public StartLevel(): void
+    {
+        this.curTime = this.curLevelConfig != null ? this.curLevelConfig.time : 0;
+        this.curSelectChairIdx = -1;
+        this.curSelectRoomIdx = -1;
+        this._levelHasDogs = !this.IsBoardClear();
+        this.levelState = LevelState.Playing;
+    }
+
+    /** 每帧倒计时。只有 Playing 期间才走；归零直接判失败 */
+    public TickLevel(deltaTime: number): void
+    {
+        if (this.levelState != LevelState.Playing) return;
+        this.curTime -= deltaTime;
+        if (this.curTime <= 0)
+        {
+            this.curTime = 0;
+            this.FinishLevel(false);
+        }
+    }
+
+    /** 剩余秒数（向上取整）。time_txt 显示的是 "240秒" 这种整数 */
+    public GetRemainSeconds(): number
+    {
+        return this.curTime > 0 ? Math.ceil(this.curTime) : 0;
+    }
+
+    /** 盘面是否已清空 —— 所有椅子上的狗都被卡车接走了 */
+    public IsBoardClear(): boolean
+    {
+        if (this.curLevelConfig == null) return false;
+        for (let i = 0; i < this.curLevelConfig.chairs.length; i++)
+        {
+            let dogs: number[] = this.curLevelConfig.chairs[i].dogs;
+            for (let j = 0; j < dogs.length; j++)
+            {
+                if (dogs[j] > 0) return false;
+            }
+        }
+        return true;
+    }
+
+    /** 结算一关。重复调用只生效一次（状态已经离开 Playing 就直接返回） */
+    public FinishLevel(isWin: boolean): void
+    {
+        if (this.levelState != LevelState.Playing) return;
+        this.levelState = isWin ? LevelState.Win : LevelState.Lose;
+        this.curSelectChairIdx = -1;
+        this.curSelectRoomIdx = -1;
+        this.ShowResult(isWin);
+    }
+
+    /**
+     * 结算弹窗的按钮回调。
+     *
+     * 弹窗自己不认识关卡（它连 curFightLevelId 都不该知道），所以「下一步是什么」
+     * 交给这一层 —— 只有这里同时握着当前关卡号和关卡总数。
+     * 最后一关再点「下一关」就重玩最后一关：SetLevelCfgById 内部会把号夹到最大值。
+     */
+    public OnResultButton(isNext: boolean): void
+    {
+        this.SetLevelCfgById(isNext ? this.curFightLevelId + 1 : this.curFightLevelId);
+    }
+
+    private async ShowResult(isWin: boolean): Promise<void>
+    {
+        let para: ResultPara = new ResultPara();
+        para.isWin = isWin;
+        // ⚠️ 预制体里 titlebg/Text 写死的是「恭喜过关」，而且这一行在 win_node / fail_node
+        //    **之外**、两种结果共用 —— 也就是说失败时它照样显示「恭喜过关」。
+        //    预制体里没有失败版文案，所以失败标题必须由这里传。
+        //    「挑战失败」是占位文案，正式文案定了改这一行即可。
+        para.title = isWin ? "恭喜过关" : "挑战失败";
+        await UIManager.instance.openBox<UIGameResultView, ResultPara>(UIGameResultView, UIGameResultView.PrefabPath, para);
     }
 
     public SetSelectChairId(chairId:number)
     {
+        // 结算弹窗弹出后盘面必须冻住（否则还能继续搬狗、搬完再弹一次结算）。见 LevelState
+        if (this.levelState != LevelState.Playing) return;
         if (this.curSelectRoomIdx > 0)
         {
             let roomNode:RoomNode = this.gameMainObj.GetRoomNode(this.curSelectRoomIdx);
@@ -191,6 +316,8 @@ export class GameDataManager implements IManager {
 
     public SetSelectRoomId(roomId:number)
     {
+        // 同上：结算后不再接受操作
+        if (this.levelState != LevelState.Playing) return;
         let roomNode:RoomNode = this.gameMainObj.GetRoomNode(roomId);
         if (this.curSelectRoomIdx < 0)
         {
@@ -239,6 +366,10 @@ export class GameDataManager implements IManager {
 
     public CheckDogFlyToCar()
     {
+        if (this.levelState != LevelState.Playing) return;
+        // 这一轮有没有椅子真的起飞。飞了的话飞完会回调回来再扫一遍，
+        // 所以"扫完一遍一只都没飞"才是整个级联的终点。
+        let flew: boolean = false;
         for (let i = 0; i < this.curLevelConfig.chairs.length; i++)
         {
             let chairData:LevelChairData = this.curLevelConfig.chairs[i];
@@ -263,9 +394,17 @@ export class GameDataManager implements IManager {
                     {
                         chairData.dogs[k] = 0;
                     }
+                    flew = true;
                     break;
                 }
             }
+        }
+
+        // 级联走完了：盘面全空就是过关。
+        // `_levelHasDogs` 是挡"空关卡一开局就判过关"的退化情况（见它的注释）。
+        if (!flew && this._levelHasDogs && this.IsBoardClear())
+        {
+            this.FinishLevel(true);
         }
     }
 
