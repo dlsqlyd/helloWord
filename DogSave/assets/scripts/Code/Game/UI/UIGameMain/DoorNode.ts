@@ -59,7 +59,7 @@ export class DoorNode extends Component {
     /**
      * 广告看完之后解锁这道门：给它一个"在等的颜色"，让 FlyToCar 能命中它。
      *
-     * 取色用的是和开局 Idle 门**同一个**函数（`GetFirstChairBottomColor`）——
+     * 取色用的是和开局 Idle 门**同一个**函数（`GetRandomDoorColor`）——
      * 不另发明一套规则，否则"解锁出来的门"和"开局的门"行为会不一致。
      */
     private onAdsUnlock()
@@ -71,7 +71,7 @@ export class DoorNode extends Component {
         // 幂等：只有锁着的门才需要解锁（连点两下 / 状态已经被别处改过）
         if (this.doorState != DoorState.Lock) return;
 
-        let doorColor:DogColor = GameDataManager.instance.gameMainObj.GetFirstChairBottomColor();
+        let doorColor:DogColor = GameDataManager.instance.gameMainObj.GetRandomDoorColor();
         // CreateWithColor 内部会把 doorState 置成 Idle 并刷新 dogIcon / 车门开合，
         // 顺带把 adsBtn 关掉（走 RefreshLock 的那条判据）—— 这里不用再手动摆状态。
         this.CreateWithColor(doorColor);

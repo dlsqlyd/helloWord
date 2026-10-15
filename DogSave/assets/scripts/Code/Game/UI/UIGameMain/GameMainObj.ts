@@ -144,6 +144,15 @@ export class GameMainObj extends Component {
         // 所以这里同时也是"重开一关时把倒计时重置"的地方。
         GameDataManager.instance.StartLevel();
         this.RefreshTimeText();
+        for (let i = 0; i < this.UsingdDogs.length; i++)
+        {
+            let dog = this.UsingdDogs[i];
+            this.NoUsedDogs.unshift(dog);//添加到头部
+            dog.StopAnim();
+            dog._stopTween();
+            dog.node.active = false
+        }
+        this.UsingdDogs = [];
     }
 
     private async onClickEvent(button: Button){
@@ -207,6 +216,8 @@ export class GameMainObj extends Component {
         return candidates[idx] as DogColor;
     }
 
+
+    //不能删除 预留方案
      GetFirstChairBottomColor() : DogColor
     {
         let doorColor:DogColor = DogColor.None;
@@ -519,6 +530,7 @@ export class GameMainObj extends Component {
             {
                 chairNode.sortDog[i].FlyToCarDoor(i*0.1, toDoor);
             }
+            chairNode.node.active = false;
         }, 0.3);
         // ⚠️ 这里**原来**还有一个 scheduleOnce(0.3) 把 chairNode.bg / chairNode.touchNode
         //    关掉 —— 那是原版 Cat Sort 的行为：一根椅子把狗全送走之后整根**消失**，

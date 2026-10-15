@@ -61,6 +61,17 @@ export class ChairNode extends Component {
             console.log('Mouse down');
             // GameDataManager.instance.SetLevelCfgById(GameDataManager.instance.curFightLevelId+1);
             //todo
+            let isHaveDog = false;
+            for (let i = 0; i < this.sortDog.length; i++)
+            {
+                if (this.sortDog[i].node.active)
+                    isHaveDog = true;
+            }
+            if (!isHaveDog && GameDataManager.instance.curSelectChairIdx <= 0 && GameDataManager.instance.curSelectRoomIdx <= 0)
+            {
+                 console.log('no dog');
+                return;
+            }
             GameDataManager.instance.SetSelectChairId(this.chairId);
 
         }, this);
@@ -115,6 +126,7 @@ export class ChairNode extends Component {
         for (let i = 0; i < this.sortDog.length; i++)
         {
             this.sortDog[i].SlotIdx = i+1;
+            this.sortDog[i].ResetPosition();
         }
     }
 

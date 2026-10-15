@@ -67,8 +67,8 @@ export class GameDataManager implements IManager {
     private datas: LevelDatas;
     private leveldict: Map<number, LevelConfig>
     public curFightLevelId:number = 1;
-    private curSelectChairIdx:number = -1;
-    private curSelectRoomIdx:number = -1;
+    public curSelectChairIdx:number = -1;
+    public curSelectRoomIdx:number = -1;
     public curLevelConfig:LevelConfig;
     public gameMainObj:GameMainObj;
 

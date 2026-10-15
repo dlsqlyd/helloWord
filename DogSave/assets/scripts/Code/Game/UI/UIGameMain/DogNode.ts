@@ -131,6 +131,11 @@ export class DogNode extends Component {
         return this.dogIcon ? this.dogIcon.node : null;
     }
 
+    public ResetPosition()
+    {
+        this.node.position = new Vec3(0,0,0);
+    }
+
     /**
      * 停掉挂在本组件上的 tween。
      *
