@@ -517,28 +517,28 @@ export class DogNode extends Component {
         switch(this.DogColor)
         {
             case DogColor.Orange:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_orange" : "dogface_sad_orange";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_orange" : "dogface_orange";
                 break;
             case DogColor.Pink:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_pink" : "dogface_sad_pink";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_pink" : "dogface_pink";
                 break;
             case DogColor.Blue:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_blue" : "dogface_sad_blue";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_blue" : "dogface_blue";
                 break;
             case DogColor.Green:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_green" : "dogface_sad_green";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_green" : "dogface_green";
                 break;
             case DogColor.Purple:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_purple" : "dogface_sad_purple";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_purple" : "dogface_purple";
                 break;
             case DogColor.Yellow:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_yellow" : "dogface_sad_yellow";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_yellow" : "dogface_yellow";
                 break;
             case DogColor.Mint:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_mint" : "dogface_sad_mint";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_mint" : "dogface_mint";
                 break;
             case DogColor.Grey:
-                icon = this.DogState == DogState.FlyToDoor ? "dogface_grey" : "dogface_sad_grey";
+                icon = this.DogState == DogState.FlyToDoor ? "dogface_grey" : "dogface_grey";
                 break;
             case DogColor.None:
                 icon = "battle_alpha";  

@@ -109,28 +109,28 @@ export class DoorNode extends Component {
             switch(this.waitDogColor)
             {
                 case DogColor.Orange:
-                    icon = this.doorState == DoorState.Open ? "dogface_orange" : "dogface_sad_orange";
+                    icon = this.doorState == DoorState.Open ? "dogface_orange" : "dogface_orange";
                     break;
                 case DogColor.Pink:
-                    icon = this.doorState == DoorState.Open ? "dogface_pink" : "dogface_sad_pink";
+                    icon = this.doorState == DoorState.Open ? "dogface_pink" : "dogface_pink";
                     break;
                 case DogColor.Blue:
-                    icon = this.doorState == DoorState.Open ? "dogface_blue" : "dogface_sad_blue";
+                    icon = this.doorState == DoorState.Open ? "dogface_blue" : "dogface_blue";
                     break;
                 case DogColor.Green:
-                    icon = this.doorState == DoorState.Open ? "dogface_green" : "dogface_sad_green";
+                    icon = this.doorState == DoorState.Open ? "dogface_green" : "dogface_green";
                     break;
                 case DogColor.Purple:
-                    icon = this.doorState == DoorState.Open ? "dogface_purple" : "dogface_sad_purple";
+                    icon = this.doorState == DoorState.Open ? "dogface_purple" : "dogface_purple";
                     break;
                 case DogColor.Yellow:
-                    icon = this.doorState == DoorState.Open ? "dogface_yellow" : "dogface_sad_yellow";
+                    icon = this.doorState == DoorState.Open ? "dogface_yellow" : "dogface_yellow";
                     break;
                 case DogColor.Mint:
-                    icon = this.doorState == DoorState.Open ? "dogface_mint" : "dogface_sad_mint";
+                    icon = this.doorState == DoorState.Open ? "dogface_mint" : "dogface_mint";
                     break;
                 case DogColor.Grey:
-                    icon = this.doorState == DoorState.Open ? "dogface_grey" : "dogface_sad_grey";
+                    icon = this.doorState == DoorState.Open ? "dogface_grey" : "dogface_grey";
                     break;
                 case DogColor.None:
                     icon = "battle_alpha";  
