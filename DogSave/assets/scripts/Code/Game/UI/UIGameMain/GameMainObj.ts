@@ -96,8 +96,8 @@ export class GameMainObj extends Component {
             let doorNode:DoorNode = this.doorNodes[i];
             if (doorNode.doorState == DoorState.Idle)
             {
-                // 取"盘面上第一根非空椅子最底下那只"的颜色（不是随机 —— 见该函数的注释）
-                let doorColor:DogColor = this.GetFirstChairBottomColor();
+                // 随机一个盘面上有的颜色（不与另一扇门重复）
+                let doorColor:DogColor = this.GetRandomDoorColor();
                 doorNode.CreateWithColor(doorColor);
             }
         }
@@ -153,24 +153,61 @@ export class GameMainObj extends Component {
     }
 
     /**
-     * 给一扇 Idle 的门挑一个"它在等的颜色"。
+     * **随机**挑一个颜色，给一扇 Idle 的门当"它在等的颜色"。
      *
-     * ⚠️ 名字原先叫 `GetRandomDoorColor`，但**它一点都不随机**。
-     * 内层循环写的是
-     *     for (k...) if (list[j] != doorNodes[k].waitDogColor) { randomColor = list[j]; return ...; }
-     * —— 判据是「**存在**一扇门与候选色不同」，不是「**所有**门都与它不同」。
-     * 而盘面上永远至少有一扇 Lock 门（预制体 3 扇门，`lockIndex` 最大 2），
-     * Lock 门的 `waitDogColor` 是 `DogColor.None`(=0)，任何真实颜色(≥1)都 != 0
-     * ⇒ 第一个候选色必然命中。
-     * 所以它恒等于「**盘面上第一根非空椅子最底下那只狗的颜色**」——名字已按实际行为改成
-     * `GetFirstChairBottomColor`。判据见 level_tools/verify_level_loop.py 第 8 项
-     * （那一项的门色模型就是按这个行为建的：`first_nonzero_color`）。
+     * 规则（按最初那条注释的意图实现 —— 名字和意图终于一致了）：
+     *   1) 候选池 = **盘面上出现过的颜色**（同一颜色多只只算一次）。
+     *      必须是"盘面上有的颜色"：门等一个谁都凑不出来的颜色就是死局。
+     *   2) 避重：剔掉**其它正在收狗的门**（Idle / Open）已经等着的颜色，
+     *      于是两扇 Idle 门拿到不同颜色；`lockIndex=1` 时只有一扇门，自然不重复。
+     *      Lock 门不参与避重 —— 它的 `waitDogColor` 是 `None`(=0)，不是真实颜色。
+     *   3) 剩下的候选里**等概率随机**选一个。
      *
-     * ⚠️ 想改成"真随机 / 真避重"（注释里原本声称的行为）之前先想清楚：
-     * 第 8 项的可解性证明是**按当前行为**建的，一改就得重跑那 100 关的搜索，
-     * 而且很可能有关卡会变得无解。当前行为本身是合理设计 —— 卡车在"指路"。
+     * ⚠️ 随机之后门色不再确定 ⇒ 离线判据必须按"门色取遍所有可能"来验。
+     *    `level_tools/verify_level_loop.py` 第 8 项已改成 for-all 模型
+     *    （门色分支展开，任一次抽奖都能赢才算赢），实测结果见该脚本输出。
      */
     GetRandomDoorColor() : DogColor
+    {
+        let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
+
+        // 1) 盘面上出现过的颜色（去重）
+        let onBoard:number[] = [];
+        for (let i = 0; i < cfg.chairs.length; i++)
+        {
+            let list = cfg.chairs[i].dogs;
+            for (let j = 0; j < list.length; j++)
+            {
+                let c:number = list[j];
+                if (c > 0 && onBoard.indexOf(c) < 0) onBoard.push(c);
+            }
+        }
+        if (onBoard.length <= 0) return DogColor.None;
+
+        // 2) 避重：剔掉其它"正在收狗"的门已经等着的颜色
+        let candidates:number[] = [];
+        for (let i = 0; i < onBoard.length; i++)
+        {
+            let used = false;
+            for (let k = 0; k < this.doorNodes.length; k++)
+            {
+                let d = this.doorNodes[k];
+                if (d == null) continue;
+                if (d.doorState != DoorState.Idle && d.doorState != DoorState.Open) continue;
+                if (d.waitDogColor == onBoard[i]) { used = true; break; }
+            }
+            if (!used) candidates.push(onBoard[i]);
+        }
+        // 兜底：颜色全被别的门占完了（例如盘面上只有 1 种颜色却有 2 扇门）。
+        // 这时候宁可和别的门重复，也不能返回 None —— None 的门谁都匹配不上，
+        // 玩家就再也飞不走任何一根椅子了。
+        if (candidates.length <= 0) candidates = onBoard;
+
+        let idx:number = Math.floor(Math.random() * candidates.length);
+        return candidates[idx] as DogColor;
+    }
+
+     GetFirstChairBottomColor() : DogColor
     {
         let doorColor:DogColor = DogColor.None;
         let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
@@ -194,7 +231,6 @@ export class GameMainObj extends Component {
         }
         return doorColor;
     }
-
 
 
     update(deltaTime: number) {
@@ -502,7 +538,7 @@ export class GameMainObj extends Component {
         // 副作用（有意为之）：`ChairNode.RefreshAllSlot()` 换关时那句"把 bg/touchNode 放回来"
         // 现在是空转 —— 它们从来没被关过。留着不动，幂等。
         this.scheduleOnce(() => {
-            let doorColor:DogColor = this.GetFirstChairBottomColor();
+            let doorColor:DogColor = this.GetRandomDoorColor();
             toDoor.CreateWithColor(doorColor);
             callback();
         }, 2);
