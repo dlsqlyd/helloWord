@@ -222,5 +222,15 @@
       }
     },
     "globalConfigKey": "defaultConfig"
-  }
+  },
+  "macroCustom": [
+    {
+      "key": "ENABLE_LOG",
+      "value": false
+    },
+    {
+      "key": "FORCE_UPDATE",
+      "value": false
+    }
+  ]
 }

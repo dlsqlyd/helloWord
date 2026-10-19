@@ -1,6 +1,6 @@
 import { _decorator, Button, Component, Label, Node } from 'cc';
 import { DogNode, DogColor, DogState } from './DogNode';
-import { GameDataManager, LevelState } from '../../GameDataManager';
+import { GameDataManager, LevelState, LevelChairData } from '../../GameDataManager';
 const { ccclass, property } = _decorator;
 
 // 同一根椅子上相邻两只狗的出生间隔（秒），让整列自下而上依次弹出
@@ -62,9 +62,10 @@ export class ChairNode extends Component {
             // GameDataManager.instance.SetLevelCfgById(GameDataManager.instance.curFightLevelId+1);
             //todo
             let isHaveDog = false;
-            for (let i = 0; i < this.sortDog.length; i++)
+            let chairDatas = GameDataManager.instance.curLevelConfig.chairs[this.chairId];
+            for (let i = 0; i < chairDatas.dogs.length; i++)
             {
-                if (this.sortDog[i].node.active)
+                if (chairDatas.dogs[i] > 0)
                     isHaveDog = true;
             }
             if (!isHaveDog && GameDataManager.instance.curSelectChairIdx <= 0 && GameDataManager.instance.curSelectRoomIdx <= 0)

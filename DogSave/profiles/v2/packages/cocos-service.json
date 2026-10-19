@@ -7,7 +7,12 @@
         "services": []
       },
       "android": {
-        "configID": "2784c6",
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "wechatgame": {
+        "configID": "5a414f",
         "services": []
       }
     },
@@ -15,12 +20,57 @@
       "1780668433926": {
         "configID": "2784c6",
         "services": []
+      },
+      "1792412168474": {
+        "configID": "5a414f",
+        "services": []
+      },
+      "1792412467444": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792413039102": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792413368578": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792414332529": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792416184829": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792416323236": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792416951479": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792416980328": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
       }
     },
     "__version__": "1.3.9"
   },
   "builder-options": {
-    "configID": "2784c6",
-    "services": []
+    "configID": "5a414f",
+    "services": [],
+    "__version__": "3.0.9"
   }
 }

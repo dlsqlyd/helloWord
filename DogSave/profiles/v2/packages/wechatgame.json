@@ -1,0 +1,118 @@
+{
+  "__version__": "1.0.4",
+  "builder": {
+    "common": {
+      "binGroupConfig": {
+        "threshold": 16,
+        "enable": false
+      },
+      "buildPath": "project://build",
+      "outputName": "wechatgame",
+      "mainBundleCompressionType": "merge_dep",
+      "platform": "wechatgame",
+      "scenes": [
+        {
+          "url": "db://assets/assetsPackage/scenes/initScene/init.scene",
+          "uuid": "9ea28805-dc27-4325-b00b-521f029a25db"
+        },
+        {
+          "url": "db://assets/assetsPackage/scenes/loadingScene/loading.scene",
+          "uuid": "15382222-dc2d-431c-8bb1-a16675e69955",
+          "bundle": "db://assets/assetsPackage/scenes/loadingScene"
+        },
+        {
+          "url": "db://assets/assetsPackage/scenes/loginScene/login.scene",
+          "uuid": "3a2125e8-4cad-410c-81b5-cf38ad6495b2",
+          "bundle": "db://assets/assetsPackage/scenes/loginScene"
+        }
+      ],
+      "mangleProperties": false,
+      "skipCompressTexture": true
+    },
+    "options": {
+      "wechatgame": {
+        "orientation": "portrait",
+        "appid": "wxe6f070da333210a3",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      }
+    },
+    "taskOptionsMap": {
+      "1792412168474": {
+        "orientation": "portrait",
+        "appid": "wx3505ae05c94c6d40",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792412467444": {
+        "orientation": "portrait",
+        "appid": "wx3505ae05c94c6d40",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792413039102": {
+        "orientation": "portrait",
+        "appid": "wx3505ae05c94c6d40",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792413368578": {
+        "orientation": "portrait",
+        "appid": "wx3505ae05c94c6d40",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792414332529": {
+        "orientation": "portrait",
+        "appid": "wxe6f070da333210a3",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792416184829": {
+        "orientation": "portrait",
+        "appid": "wxe6f070da333210a3",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792416323236": {
+        "orientation": "portrait",
+        "appid": "wxe6f070da333210a3",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792416951479": {
+        "orientation": "portrait",
+        "appid": "wxe6f070da333210a3",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792416980328": {
+        "orientation": "portrait",
+        "appid": "wxe6f070da333210a3",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      }
+    },
+    "__version__": "1.3.9"
+  }
+}

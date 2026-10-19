@@ -7,8 +7,85 @@
       },
       "1780668433926}": {
         "enableObfuscate": true
+      },
+      "1792412168474": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792412296963",
+        "channel": "default"
+      },
+      "1792412467444": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792412455349",
+        "channel": "default",
+        "__version__": "1.0.0"
+      },
+      "1792413039102": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792412978549",
+        "channel": "default",
+        "__version__": "1.0.0"
+      },
+      "1792413368578": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792413355795",
+        "channel": "default",
+        "__version__": "1.0.0"
+      },
+      "1792414332529": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792414327451",
+        "channel": "default",
+        "__version__": "1.0.0"
+      },
+      "1792416184829": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792416178968",
+        "channel": "default",
+        "__version__": "1.0.0"
+      },
+      "1792416323236": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792416286936",
+        "channel": "default",
+        "__version__": "1.0.0"
+      },
+      "1792416951479": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792416946327",
+        "channel": "default",
+        "__version__": "1.0.0"
+      },
+      "1792416980328": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792416978028",
+        "channel": "default",
+        "__version__": "1.0.0"
       }
     },
-    "__version__": "1.3.9"
+    "__version__": "1.3.9",
+    "options": {
+      "android": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792412032321",
+        "channel": "default"
+      },
+      "wechatgame": {
+        "enableObfuscate": true,
+        "generateManifest": true,
+        "version": "1792416978028",
+        "channel": "default",
+        "__version__": "1.0.0"
+      }
+    }
   }
 }

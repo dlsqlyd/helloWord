@@ -530,7 +530,6 @@ export class GameMainObj extends Component {
             {
                 chairNode.sortDog[i].FlyToCarDoor(i*0.1, toDoor);
             }
-            chairNode.node.active = false;
         }, 0.3);
         // ⚠️ 这里**原来**还有一个 scheduleOnce(0.3) 把 chairNode.bg / chairNode.touchNode
         //    关掉 —— 那是原版 Cat Sort 的行为：一根椅子把狗全送走之后整根**消失**，
@@ -552,6 +551,7 @@ export class GameMainObj extends Component {
         this.scheduleOnce(() => {
             let doorColor:DogColor = this.GetRandomDoorColor();
             toDoor.CreateWithColor(doorColor);
+            chairNode.node.active = false;
             callback();
         }, 2);
         return true;
