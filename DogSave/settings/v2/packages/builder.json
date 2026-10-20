@@ -6,8 +6,11 @@
   },
   "splash-setting": {
     "background": {
-      "image": "project://settings/option_c_dusk.png",
+      "image": "project://settings/bg_game.png",
       "type": "custom"
+    },
+    "logo": {
+      "type": "none"
     }
   },
   "bundleConfig": {

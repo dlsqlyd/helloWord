@@ -3,13 +3,14 @@ import { IOnCreate } from "../../../Module/UI/IOnCreate";
 import { IOnEnable } from "../../../Module/UI/IOnEnable";
 import { UIBaseView, UIView } from "../../../Module/UI/UIBaseView";
 import { UISlider } from "../../../Module/UIComponent/UISlider";
-import { game } from "cc";
+import { game, Sprite } from "cc";
 
 @UIView("UILoadingView")
 export class UILoadingView extends UIBaseView implements IOnCreate, IOnEnable, IUpdate{
 
     public static readonly PrefabPath:string = "ui/uiloading/prefabs/uiLoadingView";
     private slider: UISlider
+    public value: Sprite;
 
     private progress: number
     public getConstructor()
@@ -20,6 +21,7 @@ export class UILoadingView extends UIBaseView implements IOnCreate, IOnEnable, I
     public onCreate()
     {
         this.slider = this.addComponent(UISlider,"loadingscreen/Slider");
+        this.value = this.node.getChildByPath("loadingscreen/Slider/progress").getComponent(Sprite);
     }
 
     public onEnable() {
@@ -36,5 +38,6 @@ export class UILoadingView extends UIBaseView implements IOnCreate, IOnEnable, I
             this.progress = value;
         }
         this.slider.setValue(this.progress);
+        this.value.fillRange = this.progress;
     }
 }
