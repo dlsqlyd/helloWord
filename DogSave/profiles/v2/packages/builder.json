@@ -38,14 +38,14 @@
   },
   "BuildTaskManager": {
     "taskMap": {
-      "1792460847445": {
+      "1792505210191": {
         "type": "build",
-        "id": "1792460847445",
+        "id": "1792505210191",
         "progress": 1,
         "state": "success",
         "stage": "build",
-        "message": "2026-10-20 20:56:29 build -> run success in 1 min 3 s!",
-        "detailMessage": "build task(wechatgame) in 62773!\r",
+        "message": "2026-10-20 22:07:10 build -> run success in 19 s!",
+        "detailMessage": "// ---- build task cocos-service：onBeforeCompressSettings ----\r",
         "options": {
           "name": "DogSave",
           "server": "",
@@ -112,16 +112,16 @@
             "threshold": 16,
             "enable": false
           },
-          "packages": {},
-          "__version__": "1.3.9",
           "buildStageGroup": {
             "build": [
               "run"
             ]
           },
-          "logDest": "project://temp/builder/log/wechatgame10-20-2026 09-47.log"
+          "packages": {},
+          "__version__": "1.3.9",
+          "logDest": "project://temp/builder/log/wechatgame10-20-2026 22-06.log"
         },
-        "time": "10-20-2026 20:55:25",
+        "time": "10-20-2026 22:06:50",
         "dirty": false
       }
     }

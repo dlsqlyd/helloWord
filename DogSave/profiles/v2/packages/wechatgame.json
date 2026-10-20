@@ -38,7 +38,7 @@
     "options": {
       "wechatgame": {
         "orientation": "portrait",
-        "appid": "wxe6f070da333210a3",
+        "appid": "wx3505ae05c94c6d40",
         "buildOpenDataContextTemplate": "",
         "separateEngine": false,
         "highPerformanceMode": false,
@@ -121,6 +121,14 @@
       "1792460847445": {
         "orientation": "portrait",
         "appid": "wxe6f070da333210a3",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792505210191": {
+        "orientation": "portrait",
+        "appid": "wx3505ae05c94c6d40",
         "buildOpenDataContextTemplate": "",
         "separateEngine": false,
         "highPerformanceMode": false,
