@@ -56,7 +56,7 @@ export class ChairNode extends Component {
     private _sortDogSource: DogNode[] = null;
 
     start() {
-       
+       this.touchNode.active = true;
         this.touchNode.on(Node.EventType.TOUCH_END, (event) => {
             console.log('Mouse down');
             // GameDataManager.instance.SetLevelCfgById(GameDataManager.instance.curFightLevelId+1);

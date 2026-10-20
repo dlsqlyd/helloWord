@@ -44,8 +44,8 @@
         "progress": 1,
         "state": "success",
         "stage": "build",
-        "message": "2026-10-20 09:49:38 build -> run success in 19 s!",
-        "detailMessage": "// ---- build task cocos-service：onAfterBuild ----\r",
+        "message": "2026-10-20 20:56:29 build -> run success in 1 min 3 s!",
+        "detailMessage": "build task(wechatgame) in 62773!\r",
         "options": {
           "name": "DogSave",
           "server": "",
@@ -121,7 +121,7 @@
           },
           "logDest": "project://temp/builder/log/wechatgame10-20-2026 09-47.log"
         },
-        "time": "10-20-2026 09:49:19",
+        "time": "10-20-2026 20:55:25",
         "dirty": false
       }
     }

@@ -123,7 +123,7 @@ export class GameDataManager implements IManager {
         // 所以走到这一行时 CacheManager._instance 一定已经建好了。
         //
         // ⚠️ 调试时想固定从某一关起，把下面这行换成： this.curFightLevelId = 56;
-        this.curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
+        this.curFightLevelId = 1;//CacheManager.instance.getInt("FightLevelId", 1);
         // 夹到合法区间。上界这条原来就有；下界是新加的 ——
         // 存档被改坏（0 / 负数）时 GetLevelCfgById 会返回 undefined，
         // 紧接着 CloneLevelCfg 读 oldCfg.id 直接崩。

@@ -158,7 +158,7 @@ export class GameMainObj extends Component {
     private async onClickEvent(button: Button){
         console.log('onClickEvent setting');
         // await UIManager.instance.openBox(UIGameResultView,UIGameResultView.PrefabPath);
-        GameDataManager.instance.FinishLevel(true);
+        GameDataManager.instance.FinishLevel(false);
     }
 
     /**
@@ -178,42 +178,43 @@ export class GameMainObj extends Component {
      */
     GetRandomDoorColor() : DogColor
     {
-        let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
+        // let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
 
-        // 1) 盘面上出现过的颜色（去重）
-        let onBoard:number[] = [];
-        for (let i = 0; i < cfg.chairs.length; i++)
-        {
-            let list = cfg.chairs[i].dogs;
-            for (let j = 0; j < list.length; j++)
-            {
-                let c:number = list[j];
-                if (c > 0 && onBoard.indexOf(c) < 0) onBoard.push(c);
-            }
-        }
-        if (onBoard.length <= 0) return DogColor.None;
+        // // 1) 盘面上出现过的颜色（去重）
+        // let onBoard:number[] = [];
+        // for (let i = 0; i < cfg.chairs.length; i++)
+        // {
+        //     let list = cfg.chairs[i].dogs;
+        //     for (let j = 0; j < list.length; j++)
+        //     {
+        //         let c:number = list[j];
+        //         if (c > 0 && onBoard.indexOf(c) < 0) onBoard.push(c);
+        //     }
+        // }
+        // if (onBoard.length <= 0) return DogColor.None;
 
-        // 2) 避重：剔掉其它"正在收狗"的门已经等着的颜色
-        let candidates:number[] = [];
-        for (let i = 0; i < onBoard.length; i++)
-        {
-            let used = false;
-            for (let k = 0; k < this.doorNodes.length; k++)
-            {
-                let d = this.doorNodes[k];
-                if (d == null) continue;
-                if (d.doorState != DoorState.Idle && d.doorState != DoorState.Open) continue;
-                if (d.waitDogColor == onBoard[i]) { used = true; break; }
-            }
-            if (!used) candidates.push(onBoard[i]);
-        }
-        // 兜底：颜色全被别的门占完了（例如盘面上只有 1 种颜色却有 2 扇门）。
-        // 这时候宁可和别的门重复，也不能返回 None —— None 的门谁都匹配不上，
-        // 玩家就再也飞不走任何一根椅子了。
-        if (candidates.length <= 0) candidates = onBoard;
+        // // 2) 避重：剔掉其它"正在收狗"的门已经等着的颜色
+        // let candidates:number[] = [];
+        // for (let i = 0; i < onBoard.length; i++)
+        // {
+        //     let used = false;
+        //     for (let k = 0; k < this.doorNodes.length; k++)
+        //     {
+        //         let d = this.doorNodes[k];
+        //         if (d == null) continue;
+        //         if (d.doorState != DoorState.Idle && d.doorState != DoorState.Open) continue;
+        //         if (d.waitDogColor == onBoard[i]) { used = true; break; }
+        //     }
+        //     if (!used) candidates.push(onBoard[i]);
+        // }
+        // // 兜底：颜色全被别的门占完了（例如盘面上只有 1 种颜色却有 2 扇门）。
+        // // 这时候宁可和别的门重复，也不能返回 None —— None 的门谁都匹配不上，
+        // // 玩家就再也飞不走任何一根椅子了。
+        // if (candidates.length <= 0) candidates = onBoard;
 
-        let idx:number = Math.floor(Math.random() * candidates.length);
-        return candidates[idx] as DogColor;
+        // let idx:number = Math.floor(Math.random() * candidates.length);
+        // return candidates[idx] as DogColor;
+        return this.GetFirstChairBottomColor();
     }
 
 
@@ -227,22 +228,28 @@ export class GameMainObj extends Component {
             let list = cfg.chairs[i].dogs;
             for (let j = 0; j < list.length; j++)
             {
-                if (list[j] > 0)
+                if (list[j] > 0 && !this.IsHaveSameInDoor(list[j]))
                 {
-                    for (let k = 0; k < this.doorNodes.length; k++)
-                    {
-                        if (list[j] !=  this.doorNodes[k].waitDogColor)
-                        {
-                            doorColor = list[j];
-                            return doorColor;
-                        }
-                    }
+                    return list[j];
                 }
             }
         }
         return doorColor;
     }
 
+    IsHaveSameInDoor(color:DogColor) : Boolean
+    {
+        let isHave = false;
+        for (let k = 0; k < this.doorNodes.length; k++)
+        {
+            if (color == this.doorNodes[k].waitDogColor)
+            {
+                isHave = true;
+                return isHave;
+            }
+        }
+        return isHave
+    }
 
     update(deltaTime: number) {
         let gdm: GameDataManager = GameDataManager.instance;
@@ -530,6 +537,7 @@ export class GameMainObj extends Component {
             {
                 chairNode.sortDog[i].FlyToCarDoor(i*0.1, toDoor);
             }
+            chairNode.touchNode.active = false;
         }, 0.3);
         // ⚠️ 这里**原来**还有一个 scheduleOnce(0.3) 把 chairNode.bg / chairNode.touchNode
         //    关掉 —— 那是原版 Cat Sort 的行为：一根椅子把狗全送走之后整根**消失**，
@@ -549,9 +557,9 @@ export class GameMainObj extends Component {
         // 副作用（有意为之）：`ChairNode.RefreshAllSlot()` 换关时那句"把 bg/touchNode 放回来"
         // 现在是空转 —— 它们从来没被关过。留着不动，幂等。
         this.scheduleOnce(() => {
+            chairNode.node.active = false;
             let doorColor:DogColor = this.GetRandomDoorColor();
             toDoor.CreateWithColor(doorColor);
-            chairNode.node.active = false;
             callback();
         }, 2);
         return true;

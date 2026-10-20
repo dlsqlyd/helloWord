@@ -100,28 +100,28 @@ export class RoomNode extends Component {
             switch(this.sleepDogColor)
             {
                 case DogColor.Orange:
-                    icon = "dogface_sad_orange";
+                    icon = "dogface_orange";
                     break;
                 case DogColor.Pink:
-                    icon = "dogface_sad_pink";
+                    icon = "dogface_pink";
                     break;
                 case DogColor.Blue:
-                    icon = "dogface_sad_blue";
+                    icon = "dogface_blue";
                     break;
                 case DogColor.Green:
-                    icon = "dogface_sad_green";
+                    icon = "dogface_green";
                     break;
                 case DogColor.Purple:
-                    icon = "dogface_sad_purple";
+                    icon = "dogface_purple";
                     break;
                 case DogColor.Yellow:
-                    icon = "dogface_sad_yellow";
+                    icon = "dogface_yellow";
                     break;
                 case DogColor.Mint:
-                    icon = "dogface_sad_mint";
+                    icon = "dogface_mint";
                     break;
                 case DogColor.Grey:
-                    icon = "dogface_sad_grey";
+                    icon = "dogface_grey";
                     break;
                 case DogColor.None:
                     icon = "battle_alpha";  
