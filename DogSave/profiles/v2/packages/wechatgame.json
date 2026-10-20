@@ -8,7 +8,7 @@
       },
       "buildPath": "project://build",
       "outputName": "wechatgame",
-      "mainBundleCompressionType": "merge_dep",
+      "mainBundleCompressionType": "subpackage",
       "platform": "wechatgame",
       "scenes": [
         {
@@ -27,7 +27,13 @@
         }
       ],
       "mangleProperties": false,
-      "skipCompressTexture": true
+      "skipCompressTexture": true,
+      "mainBundleIsRemote": false,
+      "buildStageGroup": {
+        "build": [
+          "run"
+        ]
+      }
     },
     "options": {
       "wechatgame": {
@@ -105,6 +111,14 @@
         "__version__": "1.0.4"
       },
       "1792416980328": {
+        "orientation": "portrait",
+        "appid": "wxe6f070da333210a3",
+        "buildOpenDataContextTemplate": "",
+        "separateEngine": false,
+        "highPerformanceMode": false,
+        "__version__": "1.0.4"
+      },
+      "1792460847445": {
         "orientation": "portrait",
         "appid": "wxe6f070da333210a3",
         "buildOpenDataContextTemplate": "",
