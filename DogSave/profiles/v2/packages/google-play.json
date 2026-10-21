@@ -1,0 +1,15 @@
+{
+  "__version__": "1.0.1",
+  "builder": {
+    "common": {
+      "binGroupConfig": {
+        "threshold": 16,
+        "enable": false
+      },
+      "buildPath": "project://build",
+      "outputName": "google-play",
+      "mainBundleCompressionType": "merge_dep",
+      "platform": "google-play"
+    }
+  }
+}

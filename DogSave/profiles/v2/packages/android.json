@@ -14,7 +14,7 @@
     },
     "options": {
       "android": {
-        "packageName": "com.cocos.taowu",
+        "packageName": "com.joker.savedog",
         "resizeableActivity": true,
         "maxAspectRatio": "2.4",
         "orientation": {
@@ -23,9 +23,10 @@
           "landscapeRight": false,
           "landscapeLeft": false
         },
-        "apiLevel": 30,
+        "apiLevel": 34,
         "appABIs": [
-          "arm64-v8a"
+          "arm64-v8a",
+          "armeabi-v7a"
         ],
         "useDebugKeystore": true,
         "keystorePath": "",
@@ -35,6 +36,7 @@
         "appBundle": false,
         "androidInstant": false,
         "inputSDK": false,
+        "isSoFileCompressed": true,
         "remoteUrl": "",
         "sdkPath": "",
         "ndkPath": "",
@@ -72,6 +74,79 @@
         "appBundle": false,
         "androidInstant": false,
         "inputSDK": false,
+        "remoteUrl": "",
+        "sdkPath": "",
+        "ndkPath": "",
+        "javaHome": "",
+        "javaPath": "",
+        "renderBackEnd": {
+          "vulkan": false,
+          "gles3": true,
+          "gles2": true
+        },
+        "swappy": false,
+        "__version__": "1.0.1"
+      },
+      "1792589283233": {
+        "packageName": "com.joker.savedog",
+        "resizeableActivity": true,
+        "maxAspectRatio": "2.4",
+        "orientation": {
+          "portrait": true,
+          "upsideDown": false,
+          "landscapeRight": false,
+          "landscapeLeft": false
+        },
+        "apiLevel": 34,
+        "appABIs": [
+          "arm64-v8a"
+        ],
+        "useDebugKeystore": true,
+        "keystorePath": "",
+        "keystorePassword": "",
+        "keystoreAlias": "",
+        "keystoreAliasPassword": "",
+        "appBundle": false,
+        "androidInstant": false,
+        "inputSDK": false,
+        "isSoFileCompressed": true,
+        "remoteUrl": "",
+        "sdkPath": "",
+        "ndkPath": "",
+        "javaHome": "",
+        "javaPath": "",
+        "renderBackEnd": {
+          "vulkan": false,
+          "gles3": true,
+          "gles2": true
+        },
+        "swappy": false,
+        "__version__": "1.0.1"
+      },
+      "1792589801951": {
+        "packageName": "com.joker.savedog",
+        "resizeableActivity": true,
+        "maxAspectRatio": "2.4",
+        "orientation": {
+          "portrait": true,
+          "upsideDown": false,
+          "landscapeRight": false,
+          "landscapeLeft": false
+        },
+        "apiLevel": 34,
+        "appABIs": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "useDebugKeystore": true,
+        "keystorePath": "",
+        "keystorePassword": "",
+        "keystoreAlias": "",
+        "keystoreAliasPassword": "",
+        "appBundle": false,
+        "androidInstant": false,
+        "inputSDK": false,
+        "isSoFileCompressed": true,
         "remoteUrl": "",
         "sdkPath": "",
         "ndkPath": "",

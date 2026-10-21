@@ -14,6 +14,10 @@
       "wechatgame": {
         "configID": "5a414f",
         "services": []
+      },
+      "google-play": {
+        "configID": "5a414f",
+        "services": []
       }
     },
     "taskOptionsMap": {
@@ -71,6 +75,16 @@
         "__version__": "3.0.9"
       },
       "1792505210191": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792589283233": {
+        "configID": "5a414f",
+        "services": [],
+        "__version__": "3.0.9"
+      },
+      "1792589801951": {
         "configID": "5a414f",
         "services": [],
         "__version__": "3.0.9"
