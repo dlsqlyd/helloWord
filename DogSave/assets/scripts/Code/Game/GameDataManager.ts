@@ -71,6 +71,8 @@ export class GameDataManager implements IManager {
     public curSelectRoomIdx:number = -1;
     public curLevelConfig:LevelConfig;
     public gameMainObj:GameMainObj;
+    public isCanClick:boolean = true;
+
 
     // ---------------------------------------------------------------- 关卡流程
     /** 本关剩余秒数。归零算失败（关卡表的 time 字段，见 level_tools/level_rules.py） */
@@ -259,6 +261,7 @@ export class GameDataManager implements IManager {
     public FinishLevel(isWin: boolean): void
     {
         if (this.levelState != LevelState.Playing) return;
+        this.isCanClick = true;
         this.levelState = isWin ? LevelState.Win : LevelState.Lose;
 
         // ⚠️ 先把还悬着的狗放回椅子，**再**清选中态 —— 顺序不能反。
@@ -399,11 +402,10 @@ export class GameDataManager implements IManager {
             {
                 //todo 创建拷贝狗狗 先刷新数据
                 this.ChangeChairDogColor(this.curSelectChairIdx, chairId);
-                this.gameMainObj.FlyToSameColorChair(this.curSelectChairIdx, chairId);
-                this.curSelectChairIdx = -1;
-                this.gameMainObj.scheduleOnce(() => {
+                this.gameMainObj.FlyToSameColorChair(this.curSelectChairIdx, chairId, () => {
                     this.CheckDogFlyToCar();
-                }, 1);
+                });
+                this.curSelectChairIdx = -1;
             }
         }
 

@@ -393,6 +393,7 @@ export class GameMainObj extends Component {
 
     FlyToSameColorChairFromRoomId(roomId:number, toChairId:number)
     {
+        GameDataManager.instance.isCanClick = false;
         let roomNode = this.GetRoomNode(roomId);
         let toChairNode:ChairNode = this.GetChairNodeByChairId(toChairId); 
 
@@ -414,14 +415,16 @@ export class GameMainObj extends Component {
             roomNode.AnimDog = null;
             animDog.FlyToNear(reciveNode[0], ()=>{
                 this.PutAnimEndDog(animDog);
+                GameDataManager.instance.isCanClick = true;
                 roomNode.CreateWithColor(DogColor.None);
             });   
         }
     }
 
     //飞入同色椅子
-    FlyToSameColorChair(fromChairId:number, toChairId:number)
+    FlyToSameColorChair(fromChairId:number, toChairId:number, callback: () => void)
     {
+        GameDataManager.instance.isCanClick = false;
         let fromChairNode:ChairNode = this.GetChairNodeByChairId(fromChairId);   
         let toChairNode:ChairNode = this.GetChairNodeByChairId(toChairId); 
         let toColor = 0;
@@ -489,6 +492,11 @@ export class GameMainObj extends Component {
                         this.PutAnimEndDog(animDog);
                         sendNode[i].DogColor = DogColor.None;
                         sendNode[i].DogState = DogState.None;
+                        GameDataManager.instance.isCanClick = true;
+                        if (i == 0)
+                        {
+                            callback();
+                        }
                     });
                 }
                 else
@@ -503,6 +511,7 @@ export class GameMainObj extends Component {
     //飞入到指定颜色的汽车
     FlyToCar(color:DogColor, chairId:number, callback: () => void) : Boolean
     {
+        GameDataManager.instance.isCanClick = false;
         let toDoor:DoorNode = null;
         for (let i = this.doorNodes.length - 1; i >= 0; i--)
         {
@@ -560,14 +569,18 @@ export class GameMainObj extends Component {
             chairNode.node.active = false;
             let doorColor:DogColor = this.GetRandomDoorColor();
             toDoor.CreateWithColor(doorColor);
+        }, 1);
+        this.scheduleOnce(() => {
+            GameDataManager.instance.isCanClick = true;
             callback();
-        }, 2);
+        }, 2.5);
         return true;
     }
 
     //飞到任意狗窝
     FlyToRoom(fromChairId:number, roomid:number)
     {
+        GameDataManager.instance.isCanClick = false;
         let fromChairNode:ChairNode = this.GetChairNodeByChairId(fromChairId);   
         let roomNode:RoomNode = this.GetRoomNode(roomid); 
         let toColor = 0;
@@ -610,6 +623,7 @@ export class GameMainObj extends Component {
                 {
                     animDog._FlyToRoom(roomNode, ()=>{
                         this.PutAnimEndDog(animDog);
+                        GameDataManager.instance.isCanClick = true;
                         sendNode[i].DogColor = DogColor.None;
                         sendNode[i].DogState = DogState.None;
                     });
@@ -660,6 +674,8 @@ export class GameMainObj extends Component {
                 break;
             }
         }
+        // if (this.UsingdDogs.length <= 0)
+        //     GameDataManager.instance.isCanClick = true;
     }
 
 

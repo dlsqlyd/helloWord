@@ -58,9 +58,10 @@ export class ChairNode extends Component {
     start() {
        this.touchNode.active = true;
         this.touchNode.on(Node.EventType.TOUCH_END, (event) => {
-            console.log('Mouse down');
+            console.log('Mouse down isCanClick =' + GameDataManager.instance.isCanClick);
             // GameDataManager.instance.SetLevelCfgById(GameDataManager.instance.curFightLevelId+1);
-            //todo
+             if (!GameDataManager.instance.isCanClick)
+                return;
             let isHaveDog = false;
             let chairDatas = GameDataManager.instance.curLevelConfig.chairs[this.chairId];
             for (let i = 0; i < chairDatas.dogs.length; i++)

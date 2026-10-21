@@ -39,6 +39,8 @@ export class RoomNode extends Component {
         this.sleepDogColor = DogColor.None;
         this.touchNode.on(Node.EventType.TOUCH_END, (event) => {
             console.log('room node touch down : roomIndex = ' + this.roomIndex);
+            if (!GameDataManager.instance.isCanClick)
+                return;
             if ( this.roomState == RoomState.Free)
                 GameDataManager.instance.SetSelectRoomId(this.roomIndex);
         }, this);
