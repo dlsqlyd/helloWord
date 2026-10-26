@@ -10,6 +10,93 @@
       "outputName": "google-play",
       "mainBundleCompressionType": "merge_dep",
       "platform": "google-play"
-    }
+    },
+    "options": {
+      "google-play": {
+        "packageName": "com.joker.savedog",
+        "resizeableActivity": true,
+        "maxAspectRatio": "2.4",
+        "orientation": {
+          "portrait": false,
+          "upsideDown": false,
+          "landscapeRight": true,
+          "landscapeLeft": true
+        },
+        "apiLevel": 26,
+        "appABIs": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "useDebugKeystore": true,
+        "keystorePath": "",
+        "keystorePassword": "",
+        "keystoreAlias": "",
+        "keystoreAliasPassword": "",
+        "appBundle": true,
+        "androidInstant": false,
+        "googleBilling": true,
+        "playGames": true,
+        "inputSDK": false,
+        "isSoFileCompressed": false,
+        "remoteUrl": "",
+        "sdkPath": "",
+        "ndkPath": "",
+        "javaHome": "",
+        "javaPath": "",
+        "renderBackEnd": {
+          "vulkan": true,
+          "gles3": false,
+          "gles2": false
+        },
+        "swappy": true,
+        "adpf": true,
+        "customIcon": "default",
+        "__version__": "1.0.1"
+      }
+    },
+    "taskOptionsMap": {
+      "1792590122590": {
+        "packageName": "com.joker.savedog",
+        "resizeableActivity": true,
+        "maxAspectRatio": "2.4",
+        "orientation": {
+          "portrait": false,
+          "upsideDown": false,
+          "landscapeRight": true,
+          "landscapeLeft": true
+        },
+        "apiLevel": 26,
+        "appABIs": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "useDebugKeystore": true,
+        "keystorePath": "",
+        "keystorePassword": "",
+        "keystoreAlias": "",
+        "keystoreAliasPassword": "",
+        "appBundle": true,
+        "androidInstant": false,
+        "googleBilling": true,
+        "playGames": true,
+        "inputSDK": false,
+        "isSoFileCompressed": false,
+        "remoteUrl": "",
+        "sdkPath": "",
+        "ndkPath": "",
+        "javaHome": "",
+        "javaPath": "",
+        "renderBackEnd": {
+          "vulkan": true,
+          "gles3": false,
+          "gles2": false
+        },
+        "swappy": true,
+        "adpf": true,
+        "customIcon": "default",
+        "__version__": "1.0.1"
+      }
+    },
+    "__version__": "1.3.9"
   }
 }

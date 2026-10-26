@@ -334,24 +334,24 @@ export class DogNode extends Component {
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDog.node.parent, targetDog.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         // newpos.x = newpos.x - 30;
-        newpos.y = newpos.y - 38;
+        newpos.y = newpos.y - 35;
         // 先算好方向再开 tween —— 在 .call() 里读 this.node.position 也行，
         // 但那样要依赖"call 一定在第一帧 to 之前执行"这个实现细节，不如现在就取。
         const dirX = newpos.x - this.node.position.x;
         const dirY = newpos.y - this.node.position.y;
         let dis = Vec3.distance(out, newpos);
-        let time = dis / 2500;
+        let time = dis / 4000;
         console.log("time : " + time);
         tween(this.node)
         .call(() => this.PlayTrail(dirX, dirY))
         .to(time, { position: newpos }, {
-            easing: 'backIn',
-            onComplete: (target?: object) => {
+            easing: 'sineInOut',
+            onComplete: async (target?: object) => {
                 console.log('完成FlyToNear', target);
-                this.node.active = false;
                 this.AnimDog = null;
-                targetDog.CreateDog(this.DogColor , -1);
+                await targetDog.CreateDog(this.DogColor , -1);
                 targetDog.node.active = true;
+                this.node.active = false;
                 callback();
             }
         }).start();
@@ -364,9 +364,9 @@ export class DogNode extends Component {
         let out:Vec3 = GameDataManager.instance.LocalToWorld(roomNode.dogIcon.node.parent, roomNode.dogIcon.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         // newpos.x = newpos.x - 30;
-        newpos.y = newpos.y - 38;
+        newpos.y = newpos.y - 35;
          let dis = Vec3.distance(out, newpos);
-        let time = dis / 2500;
+        let time = dis / 4000;
         // 先算好方向再开 tween —— 在 .call() 里读 this.node.position 也行，
         // 但那样要依赖"call 一定在第一帧 to 之前执行"这个实现细节，不如现在就取。
         const dirX = newpos.x - this.node.position.x;
@@ -374,7 +374,7 @@ export class DogNode extends Component {
         tween(this.node)
         .call(() => this.PlayTrail(dirX, dirY))
         .to(time, { position: newpos }, {
-            easing: 'backIn',
+            easing: 'sineInOut',
             onComplete: (target?: object) => {
                 console.log('完成FlyToNear', target);
                 this.node.active = false;
@@ -394,9 +394,9 @@ export class DogNode extends Component {
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDoor.node.parent, targetDoor.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
         newpos.x -= 240;
-        newpos.y -= 100;
+        newpos.y -= 220;
         let dis = Vec3.distance(out, newpos);
-        let time = dis / 2500;
+        let time = dis / 4000;
         const dirX = newpos.x - this.node.position.x;
         const dirY = newpos.y - this.node.position.y;
         tween(this.node).delay(delay)
@@ -404,7 +404,7 @@ export class DogNode extends Component {
         // 若在函数入口就开，还没轮到起飞的狗会在原地先堆出一坨粒子。
         .call(() => this.PlayTrail(dirX, dirY))
         .to(time, { position: newpos }, {
-            easing: 'backOut',
+            easing: 'sineInOut',
             onComplete: (target?: object) => {
                 console.log('完成FlyToNear', target);
                 this.node.active = false;
@@ -421,13 +421,13 @@ export class DogNode extends Component {
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetRoom.node.parent, targetRoom.node.position);
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(this.node.parent, out);
          let dis = Vec3.distance(out, newpos);
-        let time = dis / 2500;
+        let time = dis / 4000;
         const dirX = newpos.x - this.node.position.x;
         const dirY = newpos.y - this.node.position.y;
         tween(this.node)
         .call(() => this.PlayTrail(dirX, dirY))
         .to(time, { position: newpos }, {
-            easing: 'backOut',
+            easing: 'sineInOut',
             onComplete: (target?: object) => {
                 console.log('完成FlyToRoom', target);
                 this.node.active = false;
@@ -496,7 +496,7 @@ export class DogNode extends Component {
     /**
      * bornDelay: 秒。同一根椅子上的狗按槽位错开，整列就会自下而上"长出来"。
      */
-    public CreateDog(color: DogColor, bornDelay: number = 0)
+    public async CreateDog(color: DogColor, bornDelay: number = 0)
     {
         this.DogColor = color;
         if (color > DogColor.None)

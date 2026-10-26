@@ -12,9 +12,9 @@
       "asyncFunctions": true
     },
     "buildPath": "project://build",
-    "outputName": "android",
+    "outputName": "google-play",
     "mainBundleCompressionType": "merge_dep",
-    "platform": "android",
+    "platform": "google-play",
     "useSplashScreen": false,
     "scenes": [
       {
@@ -203,6 +203,87 @@
           "logDest": "project://temp/builder/log/android10-21-2026 21-36.log"
         },
         "time": "10-21-2026 21:37:52",
+        "dirty": false
+      },
+      "1792590122590": {
+        "type": "build",
+        "id": "1792590122590",
+        "progress": 1,
+        "state": "failure",
+        "stage": "run",
+        "message": "2026-10-21 21:43:10 Run build stage[run] in package /Users/liyudong/Documents/ydli/proj/private/helloworld/DogSave/build/google-play failed!",
+        "detailMessage": "",
+        "options": {
+          "name": "DogSave",
+          "server": "",
+          "engineModulesConfigKey": "defaultConfig",
+          "platform": "google-play",
+          "buildPath": "project://build",
+          "debug": false,
+          "buildMode": "normal",
+          "mangleProperties": false,
+          "md5Cache": false,
+          "skipCompressTexture": false,
+          "sourceMaps": false,
+          "overwriteProjectSettings": {
+            "macroConfig": {
+              "cleanupImageCache": "inherit-project-setting"
+            },
+            "includeModules": {
+              "physics": "inherit-project-setting",
+              "physics-2d": "inherit-project-setting",
+              "gfx-webgl2": "off"
+            }
+          },
+          "nativeCodeBundleMode": "wasm",
+          "polyfills": {
+            "asyncFunctions": false
+          },
+          "experimentalEraseModules": false,
+          "startSceneAssetBundle": false,
+          "bundleConfigs": [],
+          "inlineEnum": true,
+          "useBuiltinServer": false,
+          "md5CacheOptions": {
+            "excludes": [],
+            "includes": [],
+            "replaceOnly": [],
+            "handleTemplateMd5Link": true
+          },
+          "mainBundleIsRemote": false,
+          "mainBundleCompressionType": "merge_dep",
+          "useSplashScreen": true,
+          "bundleCommonChunk": false,
+          "packAutoAtlas": true,
+          "startScene": "9ea28805-dc27-4325-b00b-521f029a25db",
+          "outputName": "google-play",
+          "taskName": "google-play",
+          "scenes": [
+            {
+              "url": "db://assets/assetsPackage/scenes/initScene/init.scene",
+              "uuid": "9ea28805-dc27-4325-b00b-521f029a25db"
+            },
+            {
+              "url": "db://assets/assetsPackage/scenes/loadingScene/loading.scene",
+              "uuid": "15382222-dc2d-431c-8bb1-a16675e69955",
+              "bundle": "db://assets/assetsPackage/scenes/loadingScene"
+            },
+            {
+              "url": "db://assets/assetsPackage/scenes/loginScene/login.scene",
+              "uuid": "3a2125e8-4cad-410c-81b5-cf38ad6495b2",
+              "bundle": "db://assets/assetsPackage/scenes/loginScene"
+            }
+          ],
+          "wasmCompressionMode": false,
+          "binGroupConfig": {
+            "threshold": 16,
+            "enable": false
+          },
+          "packages": {},
+          "__version__": "1.3.9",
+          "logDest": "project://temp/builder/log/google-play10-21-2026 21-42.log"
+        },
+        "time": "10-21-2026 21:42:02",
         "dirty": false
       }
     }

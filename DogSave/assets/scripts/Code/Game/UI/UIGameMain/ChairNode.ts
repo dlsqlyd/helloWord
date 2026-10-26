@@ -69,7 +69,7 @@ export class ChairNode extends Component {
                 if (chairDatas.dogs[i] > 0)
                     isHaveDog = true;
             }
-            if (!isHaveDog && GameDataManager.instance.curSelectChairIdx <= 0 && GameDataManager.instance.curSelectRoomIdx <= 0)
+            if (!isHaveDog && GameDataManager.instance.curSelectChairIdx < 0 && GameDataManager.instance.curSelectRoomIdx < 0)
             {
                  console.log('no dog');
                 return;

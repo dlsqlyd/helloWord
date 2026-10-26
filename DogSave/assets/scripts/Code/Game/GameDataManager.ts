@@ -519,7 +519,7 @@ export class GameDataManager implements IManager {
 
         // 级联走完了：盘面全空就是过关。
         // `_levelHasDogs` 是挡"空关卡一开局就判过关"的退化情况（见它的注释）。
-        if (!flew && this._levelHasDogs && this.IsBoardClear())
+        if (!flew && this._levelHasDogs && this.IsBoardClear() && this.isCanClick)
         {
             this.FinishLevel(true);
         }
