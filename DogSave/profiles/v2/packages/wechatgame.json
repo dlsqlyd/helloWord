@@ -28,12 +28,7 @@
       ],
       "mangleProperties": false,
       "skipCompressTexture": true,
-      "mainBundleIsRemote": false,
-      "buildStageGroup": {
-        "build": [
-          "run"
-        ]
-      }
+      "mainBundleIsRemote": false
     },
     "options": {
       "wechatgame": {

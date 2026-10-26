@@ -514,6 +514,8 @@ export class GameDataManager implements IManager {
                     flew = true;
                     break;
                 }
+                else
+                    this.isCanClick = true;
             }
         }
 
