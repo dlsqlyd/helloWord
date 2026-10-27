@@ -542,36 +542,11 @@ export class GameMainObj extends Component {
             chairNode.sortDog[i].PlayHoverUp();
         }
         this.scheduleOnce(() => {
-            // ⚠️ 顺序有讲究：必须**先**把整根椅子提到 centerNode 最上层，**再**放狗。
-            //
-            // 飞向车门的狗是 `sortDog[i]` 自己（不是 AnimDog 拷贝），所以它挂在
-            // `ChairNode/layout/slotN` 下面，渲染顺序被绑死在这根椅子的位置。
-            // 而 centerNode 的子节点是「10 根椅子 + 3 个狗窝」后者盖前者 ——
-            // 不提的话，下面几排椅子里的狗往车顶飞时会一路被后面的椅子和狗窝盖住，
-            // 狗和拖尾被切成一段一段的。见 ChairNode.RaiseFlightLayer() 的注释。
-            chairNode.RaiseFlightLayer();
-            // 记下"最后一只狗什么时候落地"，用来决定何时关椅子（见下面那段）。
-            let lastLand = 0;
             for (let i = chairNode.sortDog.length - 1; i >= 0; i--)
             {
-                lastLand = Math.max(lastLand, chairNode.sortDog[i].FlyToCarDoor(i*0.1, toDoor));
+                chairNode.sortDog[i].FlyToCarDoor(i*0.1, toDoor);
             }
             chairNode.touchNode.active = false;
-            // 关门：等最后一只狗真的落地，再把整根椅子关掉。
-            //
-            // 原先这里是写死的 `scheduleOnce(..., 1)`。但最后一只狗的起飞延迟是
-            // (n-1)×0.1s（满盘 n=6 ⇒ 0.5s），再飞 dis/4000 秒 —— 落地时间会超过 1s。
-            // 于是它在半空中被父节点一起关掉：狗和拖尾当场消失，看起来像"飞一半没了"。
-            // 现在按真实落地时间推，+0.12s 是给尾帧留的余量。
-            //
-            // ⚠️ 遗留矛盾：下面那段长注释说"送完狗的椅子留在原地当额外空位"，
-            //    但 10-14 那次改动只删了"收 bg/touchNode"的那一块，1s 的
-            //    `chairNode.node.active = false` 并没有一起删 —— 所以椅子**现在仍然会消失**。
-            //    本次只修"关得太早"，没有改变这个行为。若确认要按注释那样让椅子留下，
-            //    把这一段 scheduleOnce 整个删掉即可（touchNode 已经关了，不会误点）。
-            this.scheduleOnce(() => {
-                chairNode.node.active = false;
-            }, lastLand + 0.12);
         }, 0.3);
         // ⚠️ 这里**原来**还有一个 scheduleOnce(0.3) 把 chairNode.bg / chairNode.touchNode
         //    关掉 —— 那是原版 Cat Sort 的行为：一根椅子把狗全送走之后整根**消失**，
@@ -591,10 +566,7 @@ export class GameMainObj extends Component {
         // 副作用（有意为之）：`ChairNode.RefreshAllSlot()` 换关时那句"把 bg/touchNode 放回来"
         // 现在是空转 —— 它们从来没被关过。留着不动，幂等。
         this.scheduleOnce(() => {
-            // 这里只负责换门的颜色。**关椅子不在这里** —— 原先这里写的是
-            // `chairNode.node.active = false` + 换色，但 1s 比最后一只狗的落地时间短，
-            // 会把还在飞的狗（连同它的拖尾）一起关掉。关椅子已挪到上面那个
-            // scheduleOnce 里，按 lastLand 推。
+            chairNode.node.active = false;
             let doorColor:DogColor = this.GetRandomDoorColor();
             toDoor.CreateWithColor(doorColor);
         }, 1);
