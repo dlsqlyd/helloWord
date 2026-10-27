@@ -2,6 +2,7 @@ import { game, sys } from "cc";
 import { UpdateRes } from "./UpdateRes";
 import { UpdateProcess } from "./UpdateProcess/UpdateProcess";
 import { Log } from "../../../Mono/Module/Log/Log";
+import { Define } from "../../../Mono/Define";
 import { RawVersionManifest } from "../../../Mono/Module/Resource/VersionManifest";
 import { UIManager } from "../UI/UIManager";
 import { UILayerNames } from "../UI/UILayerNames";
@@ -115,5 +116,8 @@ export class UpdateSetting {
 
     public static readonly timeout: number = 15000;
 
-    public static readonly enabled: boolean = true;
+    /** 热更总开关, 由 Define.HotUpdateEnabled 决定 */
+    public static get enabled(): boolean {
+        return Define.HotUpdateEnabled;
+    }
 }

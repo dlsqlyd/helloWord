@@ -82,15 +82,24 @@ export class HttpManager
         let response = ETTask.create<string>();
         let xhr = new XMLHttpRequest();
         xhr.timeout = timeout * 1000;
+        // ETTask.setResult 二次调用会抛 "Task already completed"，且原生 XHR 在
+        // 连接失败(ConnectException)时只触发 onerror/ontimeout，不触发 onreadystatechange。
+        // 只监听 readyState 会让 await 永久挂起 —— 表现为游戏卡死在加载界面。
+        const settle = (v: string | null) => {
+            if (!response.isCompleted) response.setResult(v as any);
+        };
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 ){
                 if((xhr.status >= 200 && xhr.status < 400)) {
-                    response.setResult(xhr.responseText);
+                    settle(xhr.responseText);
                 } else {
-                    response.setResult("");
+                    settle("");
                 }
             }
         };
+        xhr.onerror = () => settle(null);
+        xhr.ontimeout = () => settle(null);
+        xhr.onabort = () => settle(null);
         xhr.open("GET", url, true);
         xhr.setRequestHeader("Content-Type","application/json")
         if(headers!=null)
@@ -122,15 +131,22 @@ export class HttpManager
         let response = ETTask.create<string>();
         let xhr = new XMLHttpRequest();
         xhr.timeout = timeout * 1000;
+        // 同 httpGetResult: 必须兜住 onerror/ontimeout, 否则网络异常时 await 永不返回
+        const settle = (v: string | null) => {
+            if (!response.isCompleted) response.setResult(v as any);
+        };
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 ){
                 if((xhr.status >= 200 && xhr.status < 400)) {
-                    response.setResult(xhr.responseText);
+                    settle(xhr.responseText);
                 } else {
-                    response.setResult("");
+                    settle("");
                 }
             }
         };
+        xhr.onerror = () => settle(null);
+        xhr.ontimeout = () => settle(null);
+        xhr.onabort = () => settle(null);
         xhr.open("POST", url, true);
         xhr.setRequestHeader("Content-Type","application/json")
         if(headers!=null)

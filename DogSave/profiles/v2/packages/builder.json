@@ -12,9 +12,9 @@
       "asyncFunctions": true
     },
     "buildPath": "project://build",
-    "outputName": "google-play",
+    "outputName": "android",
     "mainBundleCompressionType": "merge_dep",
-    "platform": "google-play",
+    "platform": "android",
     "useSplashScreen": false,
     "scenes": [
       {
@@ -34,7 +34,8 @@
     ],
     "mangleProperties": false,
     "skipCompressTexture": true,
-    "mainBundleIsRemote": false
+    "mainBundleIsRemote": false,
+    "debug": false
   },
   "BuildTaskManager": {
     "taskMap": {
@@ -44,8 +45,8 @@
         "progress": 1,
         "state": "success",
         "stage": "build",
-        "message": "2026-10-26 21:35:06 build success in 25 s!",
-        "detailMessage": "// ---- build task cocos-service：onAfterBuild ----\r",
+        "message": "2026-10-27 23:08:51 build success in 28 s!",
+        "detailMessage": "// ---- build task wechatgame：onAfterBuild ----\r",
         "options": {
           "name": "DogSave",
           "server": "",
@@ -116,7 +117,88 @@
           "__version__": "1.3.9",
           "logDest": "project://temp/builder/log/wechatgame10-20-2026 22-06.log"
         },
-        "time": "10-26-2026 21:34:40",
+        "time": "10-27-2026 23:08:22",
+        "dirty": false
+      },
+      "1793113820822": {
+        "type": "build",
+        "id": "1793113820822",
+        "progress": 1,
+        "state": "success",
+        "stage": "build",
+        "message": "2026-10-27 23:10:46 build success in 25 s!",
+        "detailMessage": "// ---- build task cocos-service：onAfterBuild ----\r",
+        "options": {
+          "name": "DogSave",
+          "server": "",
+          "engineModulesConfigKey": "defaultConfig",
+          "platform": "android",
+          "buildPath": "project://build",
+          "debug": false,
+          "buildMode": "normal",
+          "mangleProperties": false,
+          "md5Cache": false,
+          "skipCompressTexture": false,
+          "sourceMaps": false,
+          "overwriteProjectSettings": {
+            "macroConfig": {
+              "cleanupImageCache": "inherit-project-setting"
+            },
+            "includeModules": {
+              "physics": "inherit-project-setting",
+              "physics-2d": "inherit-project-setting",
+              "gfx-webgl2": "off"
+            }
+          },
+          "nativeCodeBundleMode": "wasm",
+          "polyfills": {
+            "asyncFunctions": false
+          },
+          "experimentalEraseModules": false,
+          "startSceneAssetBundle": false,
+          "bundleConfigs": [],
+          "inlineEnum": true,
+          "useBuiltinServer": false,
+          "md5CacheOptions": {
+            "excludes": [],
+            "includes": [],
+            "replaceOnly": [],
+            "handleTemplateMd5Link": true
+          },
+          "mainBundleIsRemote": false,
+          "mainBundleCompressionType": "merge_dep",
+          "useSplashScreen": false,
+          "bundleCommonChunk": false,
+          "packAutoAtlas": true,
+          "startScene": "9ea28805-dc27-4325-b00b-521f029a25db",
+          "outputName": "android",
+          "taskName": "android-001",
+          "scenes": [
+            {
+              "url": "db://assets/assetsPackage/scenes/initScene/init.scene",
+              "uuid": "9ea28805-dc27-4325-b00b-521f029a25db"
+            },
+            {
+              "url": "db://assets/assetsPackage/scenes/loadingScene/loading.scene",
+              "uuid": "15382222-dc2d-431c-8bb1-a16675e69955",
+              "bundle": "db://assets/assetsPackage/scenes/loadingScene"
+            },
+            {
+              "url": "db://assets/assetsPackage/scenes/loginScene/login.scene",
+              "uuid": "3a2125e8-4cad-410c-81b5-cf38ad6495b2",
+              "bundle": "db://assets/assetsPackage/scenes/loginScene"
+            }
+          ],
+          "wasmCompressionMode": false,
+          "binGroupConfig": {
+            "threshold": 16,
+            "enable": false
+          },
+          "packages": {},
+          "__version__": "1.3.9",
+          "logDest": "project://temp/builder/log/android10-27-2026 23-10.log"
+        },
+        "time": "10-27-2026 23:10:20",
         "dirty": false
       }
     }

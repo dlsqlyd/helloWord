@@ -4,6 +4,7 @@ import { ObjectPool } from '../../Core/ObjectPool';
 import { Log } from '../Log/Log';
 import { RawVersionManifest } from './VersionManifest';
 import { PlatformUtils } from '../../Helper/PlatformUtils';
+import { Define } from '../../Define';
 
 export class BundleManager implements IManager {
     private static _instance: BundleManager;
@@ -138,11 +139,22 @@ export class BundleManager implements IManager {
             const xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
             xhr.timeout = 15000;
+            // 兜住 onerror/ontimeout: 连接失败时原生 XHR 不一定触发 onreadystatechange,
+            // 否则这个 Promise 永远不 resolve, 调用方 await 会一直挂着
+            let done = false;
+            const settle = (v: string) => {
+                if (done) return;
+                done = true;
+                resolve(v);
+            };
             xhr.onreadystatechange = () => {
                 if (xhr.readyState === 4) {
-                    resolve(xhr.status >= 200 && xhr.status < 400 ? xhr.responseText : null);
+                    settle(xhr.status >= 200 && xhr.status < 400 ? xhr.responseText : null);
                 }
             };
+            xhr.onerror = () => settle(null);
+            xhr.ontimeout = () => settle(null);
+            xhr.onabort = () => settle(null);
             xhr.send();
         });
     }
@@ -171,6 +183,19 @@ export class BundleManager implements IManager {
         const raw = settings.querySettings<RawVersionManifest>('assets', '_hotUpdate');
         if (raw) {
             this._builtinManifest = raw;
+        }
+
+        // 关闭热更时: 只认包内清单, 完全不碰本地缓存的远端 manifest。
+        // 否则设备上残留的 taowu_hotupdate_remote_version + remote_manifest_*.json
+        // 会把 _remoteBundleInfos 填满, bundle 又跑回远程 URL 上。
+        if (!Define.HotUpdateEnabled) {
+            this._localManifest = this._builtinManifest;
+            if (this._localManifest) {
+                Log.info(`[BundleManager] Hot update disabled, using builtin manifest, version: ${this._localManifest.v}`);
+            } else {
+                Log.warning("[BundleManager] No manifest found, hot update disabled, using builtin bundles.");
+            }
+            return;
         }
 
         // 设置远程 URL 前缀: {server}/{channel}_{platform}/

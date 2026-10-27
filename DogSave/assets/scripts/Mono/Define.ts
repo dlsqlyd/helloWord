@@ -28,6 +28,18 @@ export class Define {
 
     public static Process = 1;
 
+    /**
+     * 热更新总开关（只对原生包生效）
+     * 原生包(安卓/iOS): false = 只用安装包内(builtin)的资源, 更新流程全程短路, 不发任何
+     *   网络请求, 也不会去读本地缓存的远端 manifest(避免旧包残留导致仍走远程 URL)
+     * 微信小游戏 / Web: 恒为 true, 完全保持原有逻辑, 不受此开关影响
+     *   —— 小游戏的远程包/热更走的是另一套(settings.assets.remoteBundles), 不要在这里一刀切
+     */
+    public static get HotUpdateEnabled(): boolean {
+        if (sys.isNative) return false;
+        return true;
+    }
+
     public static readonly MinRepeatedTimerInterval: number = 100;
 
     public static get Debug(){
