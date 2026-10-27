@@ -90,15 +90,23 @@ export class DogNode extends Component {
     private _anim: Animation = null;
 
     /**
-     * 拖尾光条 / 拖尾火星（DogNode.prefab 上的 TrailStreak / TrailSpark 子节点）。
-     * 两个都是 _positionType = FREE，所以粒子停在**被发射时的世界位置**，
+     * 拖尾光条 / 火星 / 星星（DogNode.prefab 上的 TrailStreak / TrailSpark / TrailStar）。
+     * 三个都是 _positionType = FREE，所以粒子停在**被发射时的世界位置**，
      * 狗往前走、光条留在原地 => 拖尾。详见 fx_tools/fx_defs.py。
+     *
+     * 渲染顺序就是 prefab 里 _children 的顺序（后者盖前者）：
+     *     TrailStreak -> TrailSpark -> TrailStar -> dog
+     * 整组都在狗身后，星星压在最上面 —— 星星是唯一会"往外闪"的，放最后一层才不会
+     * 被光带糊掉。
      */
     @property(ParticleSystem2D)
     private _trailStreak: ParticleSystem2D = null;
 
     @property(ParticleSystem2D)
     private _trailSpark: ParticleSystem2D = null;
+
+    @property(ParticleSystem2D)
+    private _trailStar: ParticleSystem2D = null;
 
     /** 当前占着轨道的一次性动作（born / hover_up / drop），'' 表示轨道空闲 */
     private _oneShot: string = '';
@@ -276,15 +284,23 @@ export class DogNode extends Component {
         // 原地不动时（len≈0）给个默认朝向，别把 angle 留成占位值
         const ux = len > 1e-6 ? dirX / len : 1;
         const uy = len > 1e-6 ? dirY / len : 0;
+        const backX = -ux * TRAIL_BACK_OFFSET;
+        const backY = -uy * TRAIL_BACK_OFFSET;
 
         if (this._trailStreak && this._trailStreak.isValid) {
             this._trailStreak.angle = Math.atan2(uy, ux) * 180 / Math.PI;
-            this._trailStreak.sourcePos.set(-ux * TRAIL_BACK_OFFSET, -uy * TRAIL_BACK_OFFSET);
+            this._trailStreak.sourcePos.set(backX, backY);
             this._trailStreak.resetSystem();
         }
         if (this._trailSpark && this._trailSpark.isValid) {
             // 火星不需要方向（圆点），跟着一起开就行
             this._trailSpark.resetSystem();
+        }
+        if (this._trailStar && this._trailStar.isValid) {
+            // 星星也要往后挪：它渲染在狗**身后**，发射点若压在狗身上，
+            // 刚出生那一下会被狗的身体整个盖掉，看起来就像没开。
+            this._trailStar.sourcePos.set(backX, backY);
+            this._trailStar.resetSystem();
         }
     }
 
@@ -307,6 +323,7 @@ export class DogNode extends Component {
     public StopTrail() {
         if (this._trailStreak && this._trailStreak.isValid) this._trailStreak.stopSystem();
         if (this._trailSpark && this._trailSpark.isValid) this._trailSpark.stopSystem();
+        if (this._trailStar && this._trailStar.isValid) this._trailStar.stopSystem();
     }
 
     //结束悬浮 回到椅子上
@@ -388,7 +405,10 @@ export class DogNode extends Component {
 
 
     //飞到指定的卡车门
-    public FlyToCarDoor(delay: number, targetDoor:DoorNode)
+    // 返回值：这只狗**从被调用的那一刻算起**，还要多少秒才落地（delay + 飞行时间）。
+    // 调用方（GameMainObj.FlyToCar）拿它算"什么时候才能把整根椅子关掉" —— 原先
+    // 那里写死 1s，比最后一只狗真正落地的时间短，狗会在半空中被父节点一起关掉。
+    public FlyToCarDoor(delay: number, targetDoor:DoorNode) : number
     {
         this.StopAnim();
         let out:Vec3 = GameDataManager.instance.LocalToWorld(targetDoor.node.parent, targetDoor.node.position);
@@ -412,6 +432,7 @@ export class DogNode extends Component {
                 targetDoor.PlayHitEff();
             }
         },).start();
+        return delay + time;
     }
 
      //飞到指定的狗窝

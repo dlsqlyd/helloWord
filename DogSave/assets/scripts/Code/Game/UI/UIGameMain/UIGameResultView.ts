@@ -1,4 +1,4 @@
-import { Button, Label, Node } from "cc";
+import { Button, Label, Node, ParticleSystem2D } from "cc";
 import { GameDataManager } from "../../GameDataManager";
 import { IOnCreate } from "../../../Module/UI/IOnCreate";
 import { IOnDisable } from "../../../Module/UI/IOnDisable";
@@ -68,6 +68,20 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     private _winDefaultActive: boolean = null;
     private _defaultTitle: string = null;
 
+    /**
+     * 礼花（`Confetti` 容器下的三套 ParticleSystem2D：粉 / 黄 / 蓝各一套）。
+     *
+     * ⚠️ 这里**按节点名找**，没有在脚本上开 `@property` 引用 ——
+     *   粒子节点是 `fx_tools/patch_prefabs.py` 按 `fx_defs.py` 的参数**生成**的，
+     *   脚本一开 @property，prefab 里就多一份"必须和生成器同步"的连线；
+     *   哪天加第四种颜色，忘了回编辑器连线就是静默不显示。
+     *   按名字找则加/删颜色都不用碰脚本。
+     *
+     * 缓存是因为 `getComponentsInChildren` 每次都新建数组，而这里每次开关弹窗都要用。
+     * `null` = 还没解析过；解析过但预制体里没有礼花就是空数组（静默跳过，不报错）。
+     */
+    private _confetti: ParticleSystem2D[] = null;
+
     public getConstructor()
     {
         return UIGameResultView;
@@ -108,13 +122,20 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         // 2) 挂按钮回调
         this.bindButtons();
 
-        // 3) 最后才播动画
+        // 3) 礼花：赢了才撒。放在 playShow 之前 —— onEnable 跑完节点才 active，
+        //    粒子系统一旦 active 就开始跑，赶在这一帧就位才不会先空一拍。
+        this.applyConfetti(this.isWinShown());
+
+        // 4) 最后才播动画
         this.playShow();
     }
 
     public onDisable()
     {
         this._pop.stop();
+        // 礼花必须**显式停**：粒子是 FREE（世界坐标烘焙）的，节点停用只是不再更新，
+        // 粒子会停在半空；下次打开如果只 reset 不 stop，就会先闪一帧"上次那一屏"。
+        this.applyConfetti(false);
         // 复位到设计态：借出去的节点回收后会再借给下一次 openBox，
         // 不复位的话下一次打开的第一帧就是上次停在的半透明/半缩放状态，
         // 而且会带着上一次的结果文案（见 _winDefaultActive 的注释）
@@ -185,6 +206,10 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         const failNode = panel.getChildByName("fail_node");
         if (winNode != null) winNode.active = isWin;
         if (failNode != null) failNode.active = !isWin;
+
+        // 礼花跟着结果走：弹窗已经开着、结果才定下来（"先弹窗后算账"）时也要跟上，
+        // 否则会出现"输了还在撒花"或者"赢了没花"。
+        this.applyConfetti(isWin);
     }
 
     private applyResult(para: ResultPara)
@@ -298,6 +323,59 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     private panelNode(): Node
     {
         return this._pop != null ? this._pop.panel : null;
+    }
+
+    // -----------------------------------------------------------------------
+    // 礼花
+    // -----------------------------------------------------------------------
+
+    /**
+     * 屏幕上现在展示的是不是"赢"。
+     *
+     * 直接看 `win_node` 的 active，不看 `_lastIsWin` —— 后者只由 `ResultPara.isWin` 维护，
+     * `setResult()` 改不了它，两处状态会漂。屏幕上是什么就是什么，只认一个来源。
+     */
+    private isWinShown(): boolean
+    {
+        const panel = this.panelNode();
+        if (panel == null) return true;
+        const winNode = panel.getChildByName("win_node");
+        return winNode != null ? winNode.active : true;
+    }
+
+    /**
+     * 开/关礼花。`Confetti` 容器下的所有 ParticleSystem2D 一起处理
+     * （三套发射器只是颜色不同，参数在 `fx_tools/fx_defs.py` 里，和参考视频对过）。
+     *
+     * ⚠️ 关的时候必须 `stopSystem()`，不能用"把 emissionRate 调 0"：
+     *   调 0 只是不再产生新粒子，已经在飞的会一直飞完（3.45 秒），
+     *   而弹窗 0.18 秒就收完了 —— 那段时间礼花会挂在已经消失的界面上。
+     *   `stopSystem()` 会把 `_stopped` 置 true，`_canRender()` 立刻返回 false，
+     *   当帧全部消失。这正是关弹窗想要的效果（代价是它**不能**用来做"停止发射但让粒子飞完"，
+     *   引擎那句注释是错的）。
+     */
+    private applyConfetti(on: boolean)
+    {
+        const list = this.confettiSystems();
+        for (let i = 0; i < list.length; i++)
+        {
+            const ps = list[i];
+            if (ps == null || !ps.isValid || ps.node == null) continue;
+            if (on) ps.resetSystem();
+            else ps.stopSystem();
+        }
+    }
+
+    /** 懒解析 + 缓存。预制体里没有 `Confetti` 时返回空数组（老版本预制体不会报错）。 */
+    private confettiSystems(): ParticleSystem2D[]
+    {
+        if (this._confetti != null) return this._confetti;
+
+        const holder = this.node.getChildByName("Confetti");
+        this._confetti = holder != null
+            ? holder.getComponentsInChildren(ParticleSystem2D)
+            : [];
+        return this._confetti;
     }
 
     /**

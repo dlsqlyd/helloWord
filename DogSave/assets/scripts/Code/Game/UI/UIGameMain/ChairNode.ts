@@ -184,6 +184,31 @@ export class ChairNode extends Component {
         
     }
 
+    /**
+     * 把整根椅子提到 `centerNode` 兄弟列表的最上层 —— **只在"狗飞向车门"那一小段时间需要**。
+     *
+     * 为什么必须提：飞向车门的狗是 `sortDog[i]` **自己**（不是 AnimDog 拷贝），
+     * 所以它是 `ChairNode/layout/slotN` 的子节点，渲染顺序被死死绑在这根椅子的位置上。
+     * 而 `centerNode` 的子节点顺序是
+     *     ChairNode, ChairNode-001 ... ChairNode-009, RoomNode, RoomNode-001, RoomNode-002
+     * 后者盖前者。于是第 8 根椅子（`ChairNode-008`）的狗往车顶飞的时候，会依次被
+     * 第 9、6、7、4、5、2、3、0、1 根椅子以及三个狗窝的图盖住 —— 狗和拖尾被一路
+     * 切成一截一截的。这就是"层级好像有问题"。
+     *
+     * 提椅子是安全的：`bg` 是 500x80，椅子横向相距 580、纵向相距 183，
+     * 相邻椅子**根本不重叠**，所以改渲染顺序在画面上一个像素都不会动；
+     * 真正变的只有"从这根椅子里飞出去的狗和它的拖尾"。
+     *
+     * 不需要还原：椅子之间谁压谁对画面无影响，而且下一次别的椅子起飞会把它重新压回去。
+     * 也没法还原 —— 会漂，没有"原来的 index"可回。
+     */
+    public RaiseFlightLayer()
+    {
+        const p = this.node.parent;
+        if (p == null) return;
+        this.node.setSiblingIndex(p.children.length - 1);
+    }
+
     public ShowAdsBtn()
     {
         this.adsBtn.node.active = true;
