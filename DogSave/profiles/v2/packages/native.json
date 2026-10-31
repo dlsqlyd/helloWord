@@ -64,6 +64,20 @@
         "compressZip": false,
         "JobSystem": "none",
         "__version__": "1.0.2"
+      },
+      "1793115095092": {
+        "encrypted": false,
+        "xxteaKey": "23dCH8qLFI8prrvn",
+        "compressZip": false,
+        "JobSystem": "none",
+        "__version__": "1.0.2"
+      },
+      "1793152263523": {
+        "encrypted": false,
+        "xxteaKey": "23dCH8qLFI8prrvn",
+        "compressZip": false,
+        "JobSystem": "none",
+        "__version__": "1.0.2"
       }
     },
     "__version__": "1.3.9"

@@ -30,7 +30,7 @@
           "armeabi-v7a"
         ],
         "useDebugKeystore": false,
-        "keystorePath": "/Users/liyudong/Documents/ydli/private/jokergame.keystore ",
+        "keystorePath": "/Users/liyudong/Documents/ydli/private/jokergame.keystore",
         "keystorePassword": "jokergame",
         "keystoreAlias": "jokergame",
         "keystoreAliasPassword": "jokergame",
@@ -326,6 +326,80 @@
         ],
         "useDebugKeystore": false,
         "keystorePath": "/Users/liyudong/Documents/ydli/private/jokergame.keystore ",
+        "keystorePassword": "jokergame",
+        "keystoreAlias": "jokergame",
+        "keystoreAliasPassword": "jokergame",
+        "appBundle": false,
+        "androidInstant": false,
+        "inputSDK": false,
+        "isSoFileCompressed": true,
+        "remoteUrl": "",
+        "sdkPath": "",
+        "ndkPath": "",
+        "javaHome": "",
+        "javaPath": "",
+        "renderBackEnd": {
+          "vulkan": false,
+          "gles3": true,
+          "gles2": true
+        },
+        "swappy": false,
+        "__version__": "1.0.1"
+      },
+      "1793115095092": {
+        "packageName": "com.joker.game.savedog",
+        "resizeableActivity": true,
+        "maxAspectRatio": "2.4",
+        "orientation": {
+          "portrait": true,
+          "upsideDown": false,
+          "landscapeRight": false,
+          "landscapeLeft": false
+        },
+        "apiLevel": 33,
+        "appABIs": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "useDebugKeystore": false,
+        "keystorePath": "/Users/liyudong/Documents/ydli/private/jokergame.keystore ",
+        "keystorePassword": "jokergame",
+        "keystoreAlias": "jokergame",
+        "keystoreAliasPassword": "jokergame",
+        "appBundle": false,
+        "androidInstant": false,
+        "inputSDK": false,
+        "isSoFileCompressed": true,
+        "remoteUrl": "",
+        "sdkPath": "",
+        "ndkPath": "",
+        "javaHome": "",
+        "javaPath": "",
+        "renderBackEnd": {
+          "vulkan": false,
+          "gles3": true,
+          "gles2": true
+        },
+        "swappy": false,
+        "__version__": "1.0.1"
+      },
+      "1793152263523": {
+        "packageName": "com.joker.game.savedog",
+        "resizeableActivity": true,
+        "maxAspectRatio": "2.4",
+        "orientation": {
+          "portrait": true,
+          "upsideDown": false,
+          "landscapeRight": false,
+          "landscapeLeft": false
+        },
+        "apiLevel": 33,
+        "appABIs": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "useDebugKeystore": false,
+        "keystorePath": "/Users/liyudong/Documents/ydli/private/jokergame.keystore",
         "keystorePassword": "jokergame",
         "keystoreAlias": "jokergame",
         "keystoreAliasPassword": "jokergame",
