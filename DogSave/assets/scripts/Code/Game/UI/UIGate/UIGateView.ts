@@ -8,6 +8,7 @@ import { CacheManager } from "../../../Module/Player/CacheManager";
 import { CacheKeys } from "../../../Module/Const/CacheKeys";
 import { GameDataManager } from "../../GameDataManager";
 import { UISettingView } from "../UISetting/UISettingView";
+import { UICalendarView } from "../UICalendar/UICalendarView";
 import { UIGameMainView } from "../UIGameMain/UIGameMainView";
 import { UIToast } from "../UICommon/UIToast";
 
@@ -40,7 +41,8 @@ import { UIToast } from "../UICommon/UIToast";
 //   齿轮         -> 设置界面（UISettingView，真接通）
 //   开始游戏     -> 关卡界面（UIGameMainView，真接通；不关大门，关卡关掉后回到这里）
 //   加号         -> 商店：**工程里没有商店**，弹提示
-//   开始/参与    -> 每日挑战 / 拼图活动：**两个系统都不存在**，弹提示
+//   开始(红卡)   -> 日历界面（UICalendarView，真接通；日历的返回键回到大门）
+//   参与(黄卡)   -> 拼图活动：**系统不存在**，弹提示
 //
 //   金币数字读 CacheKeys.Coin（缺省 0，工程里还没有钱包）；"0/9" 没有数据源，
 //   预制体里是静态文本，等有拼图系统了调 `setPuzzleProgress()` 即可。
@@ -202,8 +204,12 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
 
     private onClickDaily(): void
     {
-        // 每日挑战系统不存在（没有每日任务表、没有领奖、没有次数）
-        UIToast.showToast("每日挑战还没做");
+        // 每日挑战**日历**已经做好了（UICalendarView），所以这里真的打开它。
+        // 但"每日挑战"这套**玩法**仍然不存在：没有每日任务表、没有次数、没有领奖，
+        // 日历里点「开始今日挑战」走的是普通关卡。
+        // ⚠️ 不想让大门的这张卡通向日历的话，把下面这行换回
+        //    `UIToast.showToast("每日挑战还没做");` 即可，就一行。
+        UIManager.instance.openWindow(UICalendarView, UICalendarView.PrefabPath);
     }
 
     private onClickPuzzle(): void
