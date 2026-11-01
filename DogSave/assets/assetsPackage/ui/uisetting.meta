@@ -5,5 +5,32 @@
   "uuid": "9b158857-eb2c-4cd7-a2c7-9ac42fe9d1f2",
   "files": [],
   "subMetas": {},
-  "userData": {}
+  "userData": {
+    "isBundle": true,
+    "bundleName": "ui_setting",
+    "bundleFilterConfig": [
+      {
+        "range": "include",
+        "type": "url",
+        "patchOption": {
+          "patchType": "glob",
+          "value": "db://assets/assetsPackage/ui/uisetting/**/*"
+        },
+        "assets": [
+          ""
+        ]
+      },
+      {
+        "range": "include",
+        "type": "url",
+        "patchOption": {
+          "patchType": "glob",
+          "value": "db://assets/assetsPackage/ui/uisetting/prefabs/**/*.prefab"
+        },
+        "assets": [
+          ""
+        ]
+      }
+    ]
+  }
 }

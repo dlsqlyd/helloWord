@@ -13,4 +13,13 @@ export class CacheKeys{
      */
     public static readonly Vibrate = "Vibrate";
     public static readonly Hint = "Hint";
+
+    /**
+     * 金币余额（大门界面左上角那个"520"）。
+     *
+     * ⚠️ 工程里**还没有钱包**：没有任何地方加币/扣币，也没有商店。
+     * 大门界面只负责"读出来显示"，缺省 0。等真有钱包时直接往这个 key 里写即可，
+     * 界面不用改。预制体里写死的 520 只是效果图的示例值，运行时会立刻被覆盖。
+     */
+    public static readonly Coin = "Coin";
 }
