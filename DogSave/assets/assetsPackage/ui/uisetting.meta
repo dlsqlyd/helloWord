@@ -7,7 +7,7 @@
   "subMetas": {},
   "userData": {
     "isBundle": true,
-    "bundleName": "ui_setting",
+    "bundleName": "ui_uisetting",
     "bundleFilterConfig": [
       {
         "range": "include",
@@ -31,6 +31,7 @@
           ""
         ]
       }
-    ]
+    ],
+    "priority": 20
   }
 }

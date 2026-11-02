@@ -42,6 +42,15 @@ export interface MonthRef
     month: number;   // 1..12
 }
 
+/** 日期网格的竖向几何（屏幕 px） */
+export interface GridLayout
+{
+    /** 单个格子的高度 */
+    cellH: number;
+    /** 相邻两行的中心距 */
+    pitch: number;
+}
+
 export class CalendarMath
 {
     /** 可翻页区间：2026-11-01 .. 2036-12-31（共 122 个月） */
@@ -54,6 +63,44 @@ export class CalendarMath
     public static readonly ROWS: number = 6;
     public static readonly COLS: number = 7;
     public static readonly CELL_COUNT: number = 42;
+
+    // -----------------------------------------------------------------------
+    // 竖向几何（量自 ref2/cal_ref2.png，见 uicalendar_src/cal2_lib.py 表头）
+    // -----------------------------------------------------------------------
+    /**
+     * 第 0 行中心 y（屏幕 px，从顶部算）。**固定值**：不管这个月是 4 行还是 6 行，
+     * 第一行都在这里 —— 否则翻页时数字会整体上下跳，像"闪了一下"。
+     */
+    public static readonly ROW0_CY: number = 763.5;
+
+    /** 5 行及以下的月份：格高 106 / 行距 121.5（= 效果图那套） */
+    public static readonly CELL_H_ROOMY: number = 106;
+    public static readonly PITCH_ROOMY: number = 121.5;
+
+    /**
+     * 6 行月份：格高 98 / 行距 106。
+     *
+     * 内芯奶油到 1362，日期格顶 712，下留 12px ⇒ 可用 638px。
+     *   6 行用 106 的格高：6*106 = 636，只剩 2px 分给 5 个行距，格子会连成一片；
+     *   压到 98/106：6*98 + 5*8 = 628，最后一行下沿 1342，余量 20px。
+     * ⚠️ 别把格高统一成 98 —— 5 行月份（效果图就是 5 行）会白矮 8px，和稿子对不上。
+     */
+    public static readonly CELL_H_TIGHT: number = 98;
+    public static readonly PITCH_TIGHT: number = 106;
+
+    /**
+     * 按行数选几何档。4/5 行用 roomy（和效果图 1:1），6 行用 tight。
+     *
+     * 只改格子高度和行距，**不改第 0 行位置**，所以翻页时数字不会跳。
+     */
+    public static gridLayout(rows: number): GridLayout
+    {
+        if (rows >= CalendarMath.ROWS)
+        {
+            return { cellH: CalendarMath.CELL_H_TIGHT, pitch: CalendarMath.PITCH_TIGHT };
+        }
+        return { cellH: CalendarMath.CELL_H_ROOMY, pitch: CalendarMath.PITCH_ROOMY };
+    }
 
     /** 月份 -> 单调递增的下标，用来做区间夹取 */
     public static monthIndex(year: number, month: number): number
@@ -188,6 +235,34 @@ export class CalendarMath
     {
         return CalendarMath.clampIndex(
             CalendarMath.monthIndex(d.getFullYear(), d.getMonth() + 1));
+    }
+
+    /**
+     * 这个月的月度奖杯是否该点亮（`lit`）。
+     *
+     * 规则（**在拿到真正的每日挑战系统之前，这是唯一说得通的判定**）：
+     *   1. 整月必须**已经过完** —— 月中就点亮会让"这个月还差 10 天"变成已获得；
+     *   2. 并且这个月的每一天都在 `done` 里 —— 缺一天就不给。
+     *
+     * ⚠️ 别改成"这个月没有漏做就点亮"：那样当前月从 1 号起就永远是亮的，
+     *    玩家一旦漏了一天又灭掉，体验是"奖杯会消失"，比"月末结算"更糟。
+     */
+    public static monthDone(year: number, month: number,
+                            today: Date, done: Set<string>): boolean
+    {
+        const last = CalendarMath.daysInMonth(year, month);
+        const end = new Date(year, month - 1, last);
+        const t = CalendarMath.startOfDay(today);
+
+        // 本月还没过完（含今天就是最后一天）→ 不结算
+        if (end.getTime() >= t.getTime()) return false;
+        if (done == null) return false;
+
+        for (let d = 1; d <= last; d++)
+        {
+            if (!done.has(CalendarMath.dayKey(year, month, d))) return false;
+        }
+        return true;
     }
 
     /** 这一天是否在可翻页区间内（含首尾） */

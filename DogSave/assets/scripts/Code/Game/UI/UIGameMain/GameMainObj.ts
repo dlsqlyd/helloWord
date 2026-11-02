@@ -573,7 +573,7 @@ export class GameMainObj extends Component {
         this.scheduleOnce(() => {
             GameDataManager.instance.isCanClick = true;
             callback();
-        }, 2.2);
+        }, 2.5);
         return true;
     }
 
