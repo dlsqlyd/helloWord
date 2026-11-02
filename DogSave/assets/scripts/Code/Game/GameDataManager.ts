@@ -234,6 +234,10 @@ export class GameDataManager implements IManager {
             // 一起挡掉「空关卡开局就过关」那种退化情况。
             this.FinishLevel(this._levelHasDogs && this.IsBoardClear());
         }
+        else if (this._levelHasDogs && this.IsBoardClear() && this.gameMainObj.IsHaveFlyAllDog() && this.gameMainObj.UsingdDogs.length <= 0)
+        {
+            this.FinishLevel(true);
+        }
     }
 
     /** 剩余秒数（向上取整）。time_txt 显示的是 "240秒" 这种整数 */
@@ -291,6 +295,7 @@ export class GameDataManager implements IManager {
         this.curSelectChairIdx = -1;
         this.curSelectRoomIdx = -1;
         this.ShowResult(isWin);
+        this.gameMainObj.unscheduleAllCallbacks();
     }
 
     /**
@@ -382,12 +387,6 @@ export class GameDataManager implements IManager {
         if (this.curSelectChairIdx < 0)
         {
             this.curSelectChairIdx = chairId;
-            // 点中椅子 ⇒ 狗狗悬浮起来被"拎"着，这时它还没获救，叫一声委屈的。
-            //
-            // 放在这里而**不是** GameMainObj.PlayHoverUp() 里，是因为 PlayHoverUp
-            // 在 FlyToCar 里也会被调用（起飞前的悬浮），那一步该响的是「高兴」的叫声 ——
-            // 写进 PlayHoverUp 会让两个音效在飞向卡车时一起炸响。
-            // 这里的语义是"玩家选中了椅子"，和"狗狗要获救"是两件事，所以按调用点分。
             SoundManager.instance.playSound(DOG_SFX_SAD);
             this.gameMainObj.PlayHoverUp(chairId);
         }
@@ -406,6 +405,13 @@ export class GameDataManager implements IManager {
                     this.CheckDogFlyToCar();
                 });
                 this.curSelectChairIdx = -1;
+            }
+            else
+            {
+                this.gameMainObj.PlayEndHover(this.curSelectChairIdx );
+                this.curSelectChairIdx = chairId;
+                SoundManager.instance.playSound(DOG_SFX_SAD);
+                this.gameMainObj.PlayHoverUp(chairId);
             }
         }
 
@@ -521,10 +527,10 @@ export class GameDataManager implements IManager {
 
         // 级联走完了：盘面全空就是过关。
         // `_levelHasDogs` 是挡"空关卡一开局就判过关"的退化情况（见它的注释）。
-        if (!flew && this._levelHasDogs && this.IsBoardClear() && this.isCanClick)
-        {
-            this.FinishLevel(true);
-        }
+        // if (!flew && this._levelHasDogs && this.IsBoardClear() && this.isCanClick)
+        // {
+        //     this.FinishLevel(true);
+        // }
     }
 
     //执行飞入

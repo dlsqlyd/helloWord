@@ -508,6 +508,20 @@ export class GameMainObj extends Component {
         }
     }
 
+    IsHaveFlyAllDog() : boolean
+    {
+        for (let i = 0; i < this.chairNodes.length; i++)
+        {
+            let chairNode:ChairNode = this.chairNodes[i];
+            for (let i = chairNode.sortDog.length - 1; i >= 0; i--)
+            {
+                if (chairNode.node.active && chairNode.sortDog[i].node.active)
+                    return false;
+            }
+        }
+        return true;
+    }
+
     //飞入到指定颜色的汽车
     FlyToCar(color:DogColor, chairId:number, callback: () => void) : Boolean
     {
@@ -573,7 +587,7 @@ export class GameMainObj extends Component {
         this.scheduleOnce(() => {
             GameDataManager.instance.isCanClick = true;
             callback();
-        }, 2.5);
+        }, 2.0);
         return true;
     }
 

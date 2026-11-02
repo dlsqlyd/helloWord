@@ -523,6 +523,7 @@ export class DogNode extends Component {
         if (color > DogColor.None)
         {
             // 先置状态再刷贴图 —— RfreshDogSprite 会据此选伤感脸
+            this.node.active = true;
             this.DogState = DogState.Idle;
             this.RfreshDogSprite();
             this.PlayBorn(bornDelay);
@@ -533,6 +534,7 @@ export class DogNode extends Component {
             this.RfreshDogSprite();
             this.StopAnim();
             this.ResetPose();
+            this.node.active = false;
         }
     }
 
