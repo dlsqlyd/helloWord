@@ -186,7 +186,8 @@ export class GameDataManager implements IManager {
         // 写的是**夹过之后**的 curFightLevelId，不是入参 levelId。
         // 在最后一关点「下一关」时入参是 101，原先会把 101 存进缓存 —— 存的是个不存在的关卡号。
         CacheManager.instance.setInt("FightLevelId", this.curFightLevelId)
-        this.gameMainObj.start();
+        if (this.gameMainObj != null)
+            this.gameMainObj.start();
     }
 
     // ---------------------------------------------------------------- 关卡流程
