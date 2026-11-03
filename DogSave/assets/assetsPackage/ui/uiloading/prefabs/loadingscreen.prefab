@@ -111,8 +111,8 @@
     },
     "_lscale": {
       "__type__": "cc.Vec3",
-      "x": 1.2,
-      "y": 1.2,
+      "x": 1.22,
+      "y": 1.22,
       "z": 1
     },
     "_mobility": 0,
@@ -181,7 +181,7 @@
     },
     "_type": 0,
     "_fillType": 0,
-    "_sizeMode": 1,
+    "_sizeMode": 0,
     "_fillCenter": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -220,7 +220,7 @@
       "__id__": 1
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 9

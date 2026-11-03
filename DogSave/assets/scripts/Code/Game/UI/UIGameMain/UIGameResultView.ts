@@ -7,6 +7,8 @@ import { IOnWidthPaddingChange } from "../../../Module/UI/IOnWidthPaddingChange"
 import { PopupAnim } from "../../../Module/UI/PopupAnim";
 import { UIBaseView, UIView } from "../../../Module/UI/UIBaseView";
 import { MenuPara } from "../UICommon/UIMenu";
+import { UIManager } from "../../../Module/UI/UIManager";
+import { UIGateView } from "../UIGate/UIGateView";
 
 // ---------------------------------------------------------------------------
 // 结算界面的弹出动画
@@ -53,6 +55,8 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     private _winButton: Button = null;
     private _failButton: Button = null;
     private _reviveButton: Button = null;
+    private _homeButton: Button = null;
+    private _homeButton2: Button = null;
 
     /** 收起动画只允许触发一次：双击不能让 closeSelf() 跑两遍 */
     private _closing: boolean = false;
@@ -255,14 +259,20 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         const winBtnNode = this.buttonNode("win_node", "btn_next");
         const failBtnNode = this.buttonNode("fail_node", "btn_replay");
         const reviveBtnNode = this.buttonNode("fail_node", "btn_revive");
+        const _homeNode = this.buttonNode("win_node", "btn_home");
+        const _homeNode2 = this.buttonNode("fail_node", "btn_home");
 
         this._winButton = winBtnNode != null ? winBtnNode.getComponent(Button) : null;
         this._failButton = failBtnNode != null ? failBtnNode.getComponent(Button) : null;
         this._reviveButton = reviveBtnNode != null ? reviveBtnNode.getComponent(Button) : null;
+        this._homeButton = _homeNode != null ? _homeNode.getComponent(Button) : null;
+        this._homeButton2 = _homeNode2 != null ? _homeNode2.getComponent(Button) : null;
 
         if (this._winButton != null) this._winButton.node.on(Button.EventType.CLICK, this.onClickNext, this);
         if (this._failButton != null) this._failButton.node.on(Button.EventType.CLICK, this.onClickReplay, this);
         if (this._reviveButton != null) this._reviveButton.node.on(Button.EventType.CLICK, this.onClickRevive, this);
+        if (this._homeButton != null) this._homeButton.node.on(Button.EventType.CLICK, this.onClickHome, this);
+        if (this._homeButton2 != null) this._homeButton2.node.on(Button.EventType.CLICK, this.onClickHome, this);
 
     }
 
@@ -271,9 +281,13 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         if (this._winButton != null) this._winButton.node.off(Button.EventType.CLICK, this.onClickNext, this);
         if (this._failButton != null) this._failButton.node.off(Button.EventType.CLICK, this.onClickReplay, this);
         if (this._reviveButton != null) this._reviveButton.node.off(Button.EventType.CLICK, this.onClickRevive, this);
+        if (this._homeButton != null) this._homeButton.node.off(Button.EventType.CLICK, this.onClickHome, this);
+        if (this._homeButton2 != null) this._homeButton2.node.off(Button.EventType.CLICK, this.onClickHome, this);
         this._winButton = null;
         this._failButton = null;
         this._reviveButton = null;
+        this._homeButton = null;
+        this._homeButton2 = null;
     }
 
     /**
@@ -313,6 +327,11 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         await this.closeSelf();
         if (GameDataManager.instance != null) GameDataManager.instance.ReviveLevel();
     }
+
+    private async onClickHome() { 
+        await UIManager.instance.openWindow(UIGateView, UIGateView.PrefabPath);
+        await UIManager.instance.destroyWindow<UIGameResultView>(UIGameResultView);
+     }
 
     private onClickRevive() { this.onRevive(); }
 
@@ -426,7 +445,7 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     {
         const panel = this.panelNode();
         if (panel == null) return null;
-        const variant = panel.getChildByName(variantName);
+        const variant = panel.parent.getChildByName(variantName);
         return variant != null ? variant.getChildByName(buttonName) : null;
     }
 
