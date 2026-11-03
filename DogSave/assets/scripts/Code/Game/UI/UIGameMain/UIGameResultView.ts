@@ -206,8 +206,8 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         const panel = this.panelNode();
         if (panel == null) return;
 
-        const winNode = panel.getChildByName("win_node");
-        const failNode = panel.getChildByName("fail_node");
+        const winNode = panel.parent.getChildByName("win_node");
+        const failNode = panel.parent.getChildByName("fail_node");
         if (winNode != null) winNode.active = isWin;
         if (failNode != null) failNode.active = !isWin;
 
@@ -224,11 +224,11 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
             this.setResult(para.isWin);
         }
 
-        if (para.title != null)
-        {
-            const label = this.titleLabel();
-            if (label != null) label.string = para.title;
-        }
+        // if (para.title != null)
+        // {
+        //     const label = this.titleLabel();
+        //     if (label != null) label.string = para.title;
+        // }
     }
 
     public onMenuIndexChanged(para: MenuPara){
@@ -329,8 +329,8 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     }
 
     private async onClickHome() { 
+        await this.closeSelf();
         await UIManager.instance.openWindow(UIGateView, UIGateView.PrefabPath);
-        await UIManager.instance.destroyWindow<UIGameResultView>(UIGameResultView);
      }
 
     private onClickRevive() { this.onRevive(); }
@@ -358,7 +358,7 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     {
         const panel = this.panelNode();
         if (panel == null) return true;
-        const winNode = panel.getChildByName("win_node");
+        const winNode = panel.parent.getChildByName("win_node");
         return winNode != null ? winNode.active : true;
     }
 
@@ -422,8 +422,8 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         const panel = this.panelNode();
         if (panel == null) return [];
 
-        const winNode = panel.getChildByName("win_node");
-        const failNode = panel.getChildByName("fail_node");
+        const winNode = panel.parent.getChildByName("win_node");
+        const failNode = panel.parent.getChildByName("fail_node");
 
         const owner = (winNode != null && winNode.active) ? winNode
                     : ((failNode != null && failNode.active) ? failNode : null);
@@ -449,25 +449,25 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         return variant != null ? variant.getChildByName(buttonName) : null;
     }
 
-    private titleLabel(): Label
-    {
-        const panel = this.panelNode();
-        if (panel == null) return null;
-        const titlebg = panel.getChildByName("titlebg");
-        const textNode = titlebg != null ? titlebg.getChildByName("Text") : null;
-        return textNode != null ? textNode.getComponent(Label) : null;
-    }
+    // private titleLabel(): Label
+    // {
+    //     const panel = this.panelNode();
+    //     if (panel == null) return null;
+    //     const titlebg = panel.getChildByName("titlebg");
+    //     const textNode = titlebg != null ? titlebg.getChildByName("Text") : null;
+    //     return textNode != null ? textNode.getComponent(Label) : null;
+    // }
 
     private captureDefaults()
     {
         const panel = this.panelNode();
         if (panel == null) return;
 
-        const winNode = panel.getChildByName("win_node");
+        const winNode = panel.parent.getChildByName("win_node");
         this._winDefaultActive = winNode != null ? winNode.active : true;
 
-        const label = this.titleLabel();
-        this._defaultTitle = label != null ? label.string : "";
+        // const label = this.titleLabel();
+        // this._defaultTitle = label != null ? label.string : "";
     }
 
     private resetVariant()
@@ -477,16 +477,16 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
 
         if (this._winDefaultActive != null)
         {
-            const winNode = panel.getChildByName("win_node");
-            const failNode = panel.getChildByName("fail_node");
+            const winNode = panel.parent.getChildByName("win_node");
+            const failNode = panel.parent.getChildByName("fail_node");
             if (winNode != null) winNode.active = this._winDefaultActive;
             if (failNode != null) failNode.active = !this._winDefaultActive;
         }
 
-        if (this._defaultTitle != null)
-        {
-            const label = this.titleLabel();
-            if (label != null) label.string = this._defaultTitle;
-        }
+        // if (this._defaultTitle != null)
+        // {
+        //     const label = this.titleLabel();
+        //     if (label != null) label.string = this._defaultTitle;
+        // }
     }
 }

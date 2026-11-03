@@ -227,6 +227,7 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
             // ⚠️ 不关大门：关卡界面关掉之后要能回到这里。
             //    如果以后关卡界面改成"关掉即退出到登录"，这里要跟着改。
             await UIManager.instance.openWindow(UIGameMainView, UIGameMainView.PrefabPath);
+            GameDataManager.instance.OnResultButton(false);
         }
         finally
         {
