@@ -580,11 +580,11 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         // 再点一次同一个日期 = 取消选中
         this._selectedKey = this._selectedKey === key ? null : key;
         this.renderCells();
-
+        const date = new Date(year, month - 1, day);
+        GameDataManager.instance.curSelectDate = date;
         if (this._selectedKey != null && this.onDaySelected != null)
         {
-            const date = new Date(year, month - 1, day);
-            GameDataManager.instance.curSelectDate = date;
+          
             this.onDaySelected(date, CalendarMath.stateOf(year, month, day, this._today, this._done));
         }
     }
