@@ -48,8 +48,10 @@ export class GameMainObj extends Component {
         GameDataManager.instance.gameMainObj = this;
         if (GameDataManager.instance.gameMode == BattleMode.Main)
             this.levelText.string = `第${GameDataManager.instance.curFightLevelId}关`;
-        else 
-            this.levelText.string = "爱狗人士"
+        else if (GameDataManager.instance.gameMode == BattleMode.Calendar)
+            this.levelText.string = "每日挑战"
+        else if (GameDataManager.instance.gameMode == BattleMode.Puzzle)
+            this.levelText.string = "拼图挑战"
         let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
         for (let i = 0; i < this.chairNodes.length; i++)
         {
