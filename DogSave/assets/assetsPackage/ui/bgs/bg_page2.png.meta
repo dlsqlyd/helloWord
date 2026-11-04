@@ -11,7 +11,7 @@
     "6c48a": {
       "importer": "texture",
       "uuid": "02ac9d55-2b6b-469a-adbe-f15311413331@6c48a",
-      "displayName": "bg_page",
+      "displayName": "bg_page2",
       "id": "6c48a",
       "name": "texture",
       "userData": {
@@ -35,7 +35,7 @@
     "f9941": {
       "importer": "sprite-frame",
       "uuid": "02ac9d55-2b6b-469a-adbe-f15311413331@f9941",
-      "displayName": "bg_page",
+      "displayName": "bg_page2",
       "id": "f9941",
       "name": "spriteFrame",
       "userData": {
@@ -60,10 +60,18 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -540, -960, 0,
-            540, -960, 0,
-            -540, 960, 0,
-            540, 960, 0
+            -540,
+            -960,
+            0,
+            540,
+            -960,
+            0,
+            -540,
+            960,
+            0,
+            540,
+            960,
+            0
           ],
           "indexes": [
             0,
