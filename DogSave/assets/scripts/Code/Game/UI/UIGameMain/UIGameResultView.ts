@@ -1,5 +1,5 @@
 import { Button, Label, Node, ParticleSystem2D } from "cc";
-import { GameDataManager } from "../../GameDataManager";
+import { BattleMode, GameDataManager } from "../../GameDataManager";
 import { IOnCreate } from "../../../Module/UI/IOnCreate";
 import { IOnDisable } from "../../../Module/UI/IOnDisable";
 import { IOnEnable } from "../../../Module/UI/IOnEnable";
@@ -273,7 +273,7 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         if (this._reviveButton != null) this._reviveButton.node.on(Button.EventType.CLICK, this.onClickRevive, this);
         if (this._homeButton != null) this._homeButton.node.on(Button.EventType.CLICK, this.onClickHome, this);
         if (this._homeButton2 != null) this._homeButton2.node.on(Button.EventType.CLICK, this.onClickHome, this);
-
+        this._winButton.node.active = GameDataManager.instance.gameMode == BattleMode.Main;
     }
 
     private unbindButtons()
@@ -449,14 +449,15 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         return variant != null ? variant.getChildByName(buttonName) : null;
     }
 
-    // private titleLabel(): Label
-    // {
-    //     const panel = this.panelNode();
-    //     if (panel == null) return null;
-    //     const titlebg = panel.getChildByName("titlebg");
-    //     const textNode = titlebg != null ? titlebg.getChildByName("Text") : null;
-    //     return textNode != null ? textNode.getComponent(Label) : null;
-    // }
+    private titleLabel(): Label
+    {
+        const panel = this.panelNode();
+        if (panel == null) return null;
+        const winNode = panel.parent.getChildByName("win_node");
+        const titlebg = winNode.getChildByName("levelBg");
+        const textNode = titlebg != null ? titlebg.getChildByName("level_txt") : null;
+        return textNode != null ? textNode.getComponent(Label) : null;
+    }
 
     private captureDefaults()
     {
@@ -466,7 +467,9 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         const winNode = panel.parent.getChildByName("win_node");
         this._winDefaultActive = winNode != null ? winNode.active : true;
 
-        // const label = this.titleLabel();
+        const label = this.titleLabel();
+        label.node.parent.active = GameDataManager.instance.gameMode == BattleMode.Main
+        label.string = `第${GameDataManager.instance.curFightLevelId}关`;
         // this._defaultTitle = label != null ? label.string : "";
     }
 

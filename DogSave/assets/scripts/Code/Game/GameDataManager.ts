@@ -123,20 +123,37 @@ export class GameDataManager implements IManager {
     {
         this.gameMode = mode;
         await this.LoadLevelConfig();
+         if (this.gameMode == BattleMode.Calendar || this.gameMode == BattleMode.Puzzle)
+        {
+            let num = Math.floor(Math.random() * 100) + 1;
+            this.curFightLevelId = num + 99;
+        }
+        else
+            this.curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
+        // 夹到合法区间。上界这条原来就有；下界是新加的 ——
+        // 存档被改坏（0 / 负数）时 GetLevelCfgById 会返回 undefined，
+        // 紧接着 CloneLevelCfg 读 oldCfg.id 直接崩。
+        if (this.curFightLevelId < 1)
+            this.curFightLevelId = 1;
+        if (this.curFightLevelId > this.datas.data.length)
+            this.curFightLevelId = this.datas.data.length;
+        let cfg2:LevelConfig = this.GetLevelCfgById(this.curFightLevelId);
+        this.curLevelConfig = this.CloneLevelCfg(cfg2);
     }
 
     public async LoadLevelConfig()
     {
-        if (this.leveldict != null)
+        if (GameDataManager._instance == null)
             return;
-        if (ConfigManager.instance == null)
-            return;
-        this.datas = await ConfigManager.instance.get<LevelDatas>(LevelDatas,"levels");
-        this.leveldict = new Map<number, LevelConfig>();
-        for (let i = 0; i <  this.datas.data.length; i++)
+        if (this.leveldict == null)
         {
-            let data = this.datas.data[i];
-            this.leveldict.set(data.id, data);
+            this.datas = await ConfigManager.instance.get<LevelDatas>(LevelDatas,"levels");
+            this.leveldict = new Map<number, LevelConfig>();
+            for (let i = 0; i <  this.datas.data.length; i++)
+            {
+                let data = this.datas.data[i];
+                this.leveldict.set(data.id, data);
+            }
         }
         // 进度从缓存读，没有存档就从第 1 关开始。
         //
@@ -149,16 +166,7 @@ export class GameDataManager implements IManager {
         // 所以走到这一行时 CacheManager._instance 一定已经建好了。
         //
         // ⚠️ 调试时想固定从某一关起，把下面这行换成： this.curFightLevelId = 56;
-        this.curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
-        // 夹到合法区间。上界这条原来就有；下界是新加的 ——
-        // 存档被改坏（0 / 负数）时 GetLevelCfgById 会返回 undefined，
-        // 紧接着 CloneLevelCfg 读 oldCfg.id 直接崩。
-        if (this.curFightLevelId < 1)
-            this.curFightLevelId = 1;
-        if (this.curFightLevelId > this.datas.data.length)
-            this.curFightLevelId = this.datas.data.length;
-        let cfg2:LevelConfig = GameDataManager.instance.GetLevelCfgById(this.curFightLevelId);
-        this.curLevelConfig = this.CloneLevelCfg(cfg2);
+       
     }
 
     private CloneLevelCfg(oldCfg:LevelConfig):LevelConfig
@@ -209,7 +217,8 @@ export class GameDataManager implements IManager {
         this.curLevelConfig = this.CloneLevelCfg(GameDataManager.instance.GetLevelCfgById(this.curFightLevelId));
         // 写的是**夹过之后**的 curFightLevelId，不是入参 levelId。
         // 在最后一关点「下一关」时入参是 101，原先会把 101 存进缓存 —— 存的是个不存在的关卡号。
-        CacheManager.instance.setInt("FightLevelId", this.curFightLevelId)
+        if (this.gameMode == BattleMode.Main)
+            CacheManager.instance.setInt("FightLevelId", this.curFightLevelId)
         if (this.gameMainObj != null)
             this.gameMainObj.start();
     }

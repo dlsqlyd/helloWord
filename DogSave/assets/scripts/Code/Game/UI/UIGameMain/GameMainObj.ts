@@ -1,6 +1,6 @@
 import { _decorator, Button, Component, find, Label, Node, Vec3 } from 'cc';
 import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
-import { GameDataManager, LevelConfig, LevelState } from '../../GameDataManager';
+import { BattleMode, GameDataManager, LevelConfig, LevelState } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
 import { DogColor, DogNode, DogState, DOG_SFX_HAPPY } from './DogNode';
 import { DoorNode, DoorState } from './DoorNode';
@@ -46,7 +46,10 @@ export class GameMainObj extends Component {
 
     start() {
         GameDataManager.instance.gameMainObj = this;
-        this.levelText.string = `第${GameDataManager.instance.curFightLevelId}关`;
+        if (GameDataManager.instance.gameMode == BattleMode.Main)
+            this.levelText.string = `第${GameDataManager.instance.curFightLevelId}关`;
+        else 
+            this.levelText.string = "爱狗人士"
         let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
         for (let i = 0; i < this.chairNodes.length; i++)
         {

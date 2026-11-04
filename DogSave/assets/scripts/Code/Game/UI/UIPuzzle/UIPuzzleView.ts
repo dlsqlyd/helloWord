@@ -382,13 +382,13 @@ export class UIPuzzleView extends UIBaseView implements IOnCreate, IOnEnable<UIP
      *    用标志位的话它会一直卡在 true，拼图界面的开始按钮从此点不动。
      *    时间窗只挡连点，没有"卡住"的状态。
      */
-    private onClickStart(): void
+    private async onClickStart(): Promise<void>
     {
         const now = Date.now();
         if (now - this._lastStartAt < UIPuzzleView.START_DEBOUNCE_MS) return;
         this._lastStartAt = now;
 
-        GameDataManager.instance.SetGameMode(BattleMode.Puzzle);
+        await GameDataManager.instance.SetGameMode(BattleMode.Puzzle);
         UIManager.instance.openWindow(UIGameMainView, UIGameMainView.PrefabPath)
             .then(() => {
                 // 关卡窗口关掉了 —— 这中间玩家可能赢了一局并解锁了新碎片。

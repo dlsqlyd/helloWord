@@ -150,7 +150,8 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
     public refreshLevel(): void
     {
         if (this._levelLabel == null) return;
-        this._levelLabel.string = `第${GameDataManager.instance.curFightLevelId}关`;
+        let curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
+        this._levelLabel.string = `第${curFightLevelId}关`;
     }
 
     /**

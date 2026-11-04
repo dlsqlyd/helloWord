@@ -616,7 +616,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         this._openingGame = true;
         try
         {
-            GameDataManager.instance.SetGameMode(BattleMode.Calendar);
+            await GameDataManager.instance.SetGameMode(BattleMode.Calendar);
             await UIManager.instance.openWindow(UIGameMainView, UIGameMainView.PrefabPath);
             GameDataManager.instance.OnResultButton(false);
         }
