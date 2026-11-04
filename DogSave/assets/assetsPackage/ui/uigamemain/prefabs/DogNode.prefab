@@ -25,26 +25,26 @@
         "__id__": 8
       },
       {
-        "__id__": 27
+        "__id__": 14
       },
       {
-        "__id__": 14
+        "__id__": 20
       }
     ],
     "_active": true,
     "_components": [
       {
-        "__id__": 20
+        "__id__": 26
       },
       {
-        "__id__": 22
+        "__id__": 28
       },
       {
-        "__id__": 24
+        "__id__": 30
       }
     ],
     "_prefab": {
-      "__id__": 26
+      "__id__": 32
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -98,8 +98,8 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 0.0,
-      "y": 0.0,
+      "x": 0,
+      "y": 0,
       "z": 0
     },
     "_lrot": {
@@ -165,7 +165,6 @@
     "__prefab": {
       "__id__": 6
     },
-    "_visFlags": 0,
     "_customMaterial": null,
     "_srcBlendFactor": 2,
     "_dstBlendFactor": 1,
@@ -177,50 +176,52 @@
       "a": 255
     },
     "duration": 1.2,
-    "emissionRate": 150.0,
+    "emissionRate": 150,
     "life": 0.13,
     "lifeVar": 0.04,
-    "angle": 180.0,
-    "angleVar": 7.0,
-    "startSize": 180.0,
-    "startSizeVar": 20.0,
-    "endSize": 124.0,
-    "endSizeVar": 10.0,
-    "startSpin": 0.0,
-    "startSpinVar": 0.0,
-    "endSpin": 0.0,
-    "endSpinVar": 0.0,
+    "angle": 180,
+    "angleVar": 7,
+    "startSize": 180,
+    "startSizeVar": 20,
+    "endSize": 124,
+    "endSizeVar": 10,
+    "startSpin": 0,
+    "startSpinVar": 0,
+    "endSpin": 0,
+    "endSpinVar": 0,
     "sourcePos": {
       "__type__": "cc.Vec2",
-      "x": 0.0,
-      "y": 0.0
+      "x": 0,
+      "y": 0
     },
     "posVar": {
       "__type__": "cc.Vec2",
-      "x": 6.0,
-      "y": 9.0
+      "x": 6,
+      "y": 9
     },
     "emitterMode": 0,
     "gravity": {
       "__type__": "cc.Vec2",
-      "x": 0.0,
-      "y": 0.0
+      "x": 0,
+      "y": 0
     },
-    "speed": 10.0,
-    "speedVar": 18.0,
-    "tangentialAccel": 0.0,
-    "tangentialAccelVar": 0.0,
-    "radialAccel": 0.0,
-    "radialAccelVar": 0.0,
+    "speed": 10,
+    "speedVar": 18,
+    "tangentialAccel": 0,
+    "tangentialAccelVar": 0,
+    "radialAccel": 0,
+    "radialAccelVar": 0,
     "rotationIsDir": true,
-    "startRadius": 0.0,
-    "startRadiusVar": 0.0,
-    "endRadius": 0.0,
-    "rotatePerS": 0.0,
-    "rotatePerSVar": 0.0,
-    "_preview": false,
+    "startRadius": 0,
+    "startRadiusVar": 0,
+    "endRadius": 0,
+    "endRadiusVar": 0,
+    "rotatePerS": 0,
+    "rotatePerSVar": 0,
     "playOnLoad": false,
     "autoRemoveOnFinish": false,
+    "_preview": true,
+    "preview": true,
     "_custom": true,
     "_file": null,
     "_spriteFrame": {
@@ -299,8 +300,8 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 0.0,
-      "y": 0.0,
+      "x": 0,
+      "y": 0,
       "z": 0
     },
     "_lrot": {
@@ -366,7 +367,6 @@
     "__prefab": {
       "__id__": 12
     },
-    "_visFlags": 0,
     "_customMaterial": null,
     "_srcBlendFactor": 2,
     "_dstBlendFactor": 1,
@@ -378,50 +378,52 @@
       "a": 255
     },
     "duration": 1.2,
-    "emissionRate": 48.0,
+    "emissionRate": 48,
     "life": 0.45,
     "lifeVar": 0.2,
-    "angle": 90.0,
-    "angleVar": 180.0,
-    "startSize": 15.0,
-    "startSizeVar": 7.0,
-    "endSize": 0.0,
-    "endSizeVar": 0.0,
-    "startSpin": 0.0,
-    "startSpinVar": 0.0,
-    "endSpin": 0.0,
-    "endSpinVar": 0.0,
+    "angle": 90,
+    "angleVar": 180,
+    "startSize": 15,
+    "startSizeVar": 7,
+    "endSize": 0,
+    "endSizeVar": 0,
+    "startSpin": 0,
+    "startSpinVar": 0,
+    "endSpin": 0,
+    "endSpinVar": 0,
     "sourcePos": {
       "__type__": "cc.Vec2",
-      "x": 0.0,
-      "y": 0.0
+      "x": 0,
+      "y": 0
     },
     "posVar": {
       "__type__": "cc.Vec2",
-      "x": 18.0,
-      "y": 18.0
+      "x": 18,
+      "y": 18
     },
     "emitterMode": 0,
     "gravity": {
       "__type__": "cc.Vec2",
-      "x": 0.0,
-      "y": -40.0
+      "x": 0,
+      "y": -40
     },
-    "speed": 26.0,
-    "speedVar": 60.0,
-    "tangentialAccel": 0.0,
-    "tangentialAccelVar": 0.0,
-    "radialAccel": 0.0,
-    "radialAccelVar": 0.0,
+    "speed": 26,
+    "speedVar": 60,
+    "tangentialAccel": 0,
+    "tangentialAccelVar": 0,
+    "radialAccel": 0,
+    "radialAccelVar": 0,
     "rotationIsDir": false,
-    "startRadius": 0.0,
-    "startRadiusVar": 0.0,
-    "endRadius": 0.0,
-    "rotatePerS": 0.0,
-    "rotatePerSVar": 0.0,
-    "_preview": false,
+    "startRadius": 0,
+    "startRadiusVar": 0,
+    "endRadius": 0,
+    "endRadiusVar": 0,
+    "rotatePerS": 0,
+    "rotatePerSVar": 0,
     "playOnLoad": false,
     "autoRemoveOnFinish": false,
+    "_preview": true,
+    "preview": true,
     "_custom": true,
     "_file": null,
     "_spriteFrame": {
@@ -479,7 +481,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "dog",
+    "_name": "TrailStar",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -541,251 +543,6 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 102,
-      "height": 90
-    },
-    "_anchorPoint": {
-      "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
-    },
-    "_id": ""
-  },
-  {
-    "__type__": "cc.CompPrefabInfo",
-    "fileId": "638pM1Ig1HzrRNOl+PGqNt"
-  },
-  {
-    "__type__": "cc.Sprite",
-    "_name": "",
-    "_objFlags": 0,
-    "__editorExtras__": {},
-    "node": {
-      "__id__": 14
-    },
-    "_enabled": true,
-    "__prefab": {
-      "__id__": 18
-    },
-    "_customMaterial": null,
-    "_srcBlendFactor": 2,
-    "_dstBlendFactor": 4,
-    "_color": {
-      "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
-      "a": 255
-    },
-    "_spriteFrame": {
-      "__uuid__": "f0ff1e3a-8d1a-4507-83ad-5dd8358b3bdf@f9941",
-      "__expectedType__": "cc.SpriteFrame"
-    },
-    "_type": 0,
-    "_fillType": 0,
-    "_sizeMode": 0,
-    "_fillCenter": {
-      "__type__": "cc.Vec2",
-      "x": 0,
-      "y": 0
-    },
-    "_fillStart": 0,
-    "_fillRange": 0,
-    "_isTrimmedMode": true,
-    "_useGrayscale": false,
-    "_atlas": null,
-    "_id": ""
-  },
-  {
-    "__type__": "cc.CompPrefabInfo",
-    "fileId": "f68BD0eO5GbbEhcFk5huVm"
-  },
-  {
-    "__type__": "cc.PrefabInfo",
-    "root": {
-      "__id__": 1
-    },
-    "asset": {
-      "__id__": 0
-    },
-    "fileId": "40rw1aXatFz4B+2fX3CvcV",
-    "instance": null,
-    "targetOverrides": null,
-    "nestedPrefabInstanceRoots": null
-  },
-  {
-    "__type__": "cc.UITransform",
-    "_name": "",
-    "_objFlags": 0,
-    "__editorExtras__": {},
-    "node": {
-      "__id__": 1
-    },
-    "_enabled": true,
-    "__prefab": {
-      "__id__": 21
-    },
-    "_contentSize": {
-      "__type__": "cc.Size",
-      "width": 80,
-      "height": 80
-    },
-    "_anchorPoint": {
-      "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
-    },
-    "_id": ""
-  },
-  {
-    "__type__": "cc.CompPrefabInfo",
-    "fileId": "d8R1PeIl9PX6ML72mm41Xt"
-  },
-  {
-    "__type__": "90896Z7NPJAE5YIOF29XCsS",
-    "_name": "",
-    "_objFlags": 0,
-    "__editorExtras__": {},
-    "node": {
-      "__id__": 1
-    },
-    "_enabled": true,
-    "__prefab": {
-      "__id__": 23
-    },
-    "dogIcon": {
-      "__id__": 17
-    },
-    "_anim": null,
-    "_trailStreak": {
-      "__id__": 5
-    },
-    "_trailSpark": {
-      "__id__": 11
-    },
-    "_id": "",
-    "_trailStar": {
-      "__id__": 30
-    }
-  },
-  {
-    "__type__": "cc.CompPrefabInfo",
-    "fileId": "7dhHJmSUVKbajavICbGEKE"
-  },
-  {
-    "__type__": "cc.Animation",
-    "_name": "",
-    "_objFlags": 0,
-    "__editorExtras__": {},
-    "node": {
-      "__id__": 1
-    },
-    "_enabled": true,
-    "__prefab": {
-      "__id__": 25
-    },
-    "playOnLoad": false,
-    "_clips": [
-      {
-        "__uuid__": "98214649-a15b-4102-9324-8a275ec5f460",
-        "__expectedType__": "cc.AnimationClip"
-      },
-      {
-        "__uuid__": "e8089872-34bc-4202-9db8-d36ab818ee22",
-        "__expectedType__": "cc.AnimationClip"
-      },
-      {
-        "__uuid__": "ac8e8e7d-59a9-42ab-9cac-36a348c120c5",
-        "__expectedType__": "cc.AnimationClip"
-      },
-      {
-        "__uuid__": "96af5c16-4187-43bb-bfb7-857d3d334a48",
-        "__expectedType__": "cc.AnimationClip"
-      }
-    ],
-    "_defaultClip": null,
-    "_id": ""
-  },
-  {
-    "__type__": "cc.CompPrefabInfo",
-    "fileId": "e380728c74be4203b17cd5"
-  },
-  {
-    "__type__": "cc.PrefabInfo",
-    "root": {
-      "__id__": 1
-    },
-    "asset": {
-      "__id__": 0
-    },
-    "fileId": "57+hJa4sxDCpzE6HeEDsg5",
-    "instance": null,
-    "targetOverrides": null
-  },
-  {
-    "__type__": "cc.Node",
-    "_name": "TrailStar",
-    "_objFlags": 0,
-    "__editorExtras__": {},
-    "_parent": {
-      "__id__": 1
-    },
-    "_children": [],
-    "_active": true,
-    "_components": [
-      {
-        "__id__": 28
-      },
-      {
-        "__id__": 30
-      }
-    ],
-    "_prefab": {
-      "__id__": 32
-    },
-    "_lpos": {
-      "__type__": "cc.Vec3",
-      "x": 0.0,
-      "y": 0.0,
-      "z": 0
-    },
-    "_lrot": {
-      "__type__": "cc.Quat",
-      "x": 0,
-      "y": 0,
-      "z": 0,
-      "w": 1
-    },
-    "_lscale": {
-      "__type__": "cc.Vec3",
-      "x": 1,
-      "y": 1,
-      "z": 1
-    },
-    "_mobility": 0,
-    "_layer": 33554432,
-    "_euler": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
-      "z": 0
-    },
-    "_id": ""
-  },
-  {
-    "__type__": "cc.UITransform",
-    "_name": "",
-    "_objFlags": 0,
-    "__editorExtras__": {},
-    "node": {
-      "__id__": 27
-    },
-    "_enabled": true,
-    "__prefab": {
-      "__id__": 29
-    },
-    "_contentSize": {
-      "__type__": "cc.Size",
       "width": 100,
       "height": 100
     },
@@ -806,13 +563,12 @@
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
-      "__id__": 27
+      "__id__": 14
     },
     "_enabled": true,
     "__prefab": {
-      "__id__": 31
+      "__id__": 18
     },
-    "_visFlags": 0,
     "_customMaterial": null,
     "_srcBlendFactor": 2,
     "_dstBlendFactor": 1,
@@ -824,50 +580,52 @@
       "a": 255
     },
     "duration": 1.2,
-    "emissionRate": 40.0,
+    "emissionRate": 40,
     "life": 0.3,
     "lifeVar": 0.14,
-    "angle": 90.0,
-    "angleVar": 180.0,
-    "startSize": 38.0,
-    "startSizeVar": 13.0,
-    "endSize": 0.0,
-    "endSizeVar": 0.0,
-    "startSpin": 0.0,
-    "startSpinVar": 360.0,
-    "endSpin": 0.0,
-    "endSpinVar": 360.0,
+    "angle": 90,
+    "angleVar": 180,
+    "startSize": 38,
+    "startSizeVar": 13,
+    "endSize": 0,
+    "endSizeVar": 0,
+    "startSpin": 0,
+    "startSpinVar": 360,
+    "endSpin": 0,
+    "endSpinVar": 360,
     "sourcePos": {
       "__type__": "cc.Vec2",
-      "x": 0.0,
-      "y": 0.0
+      "x": 0,
+      "y": 0
     },
     "posVar": {
       "__type__": "cc.Vec2",
-      "x": 12.0,
-      "y": 12.0
+      "x": 12,
+      "y": 12
     },
     "emitterMode": 0,
     "gravity": {
       "__type__": "cc.Vec2",
-      "x": 0.0,
-      "y": -30.0
+      "x": 0,
+      "y": -30
     },
-    "speed": 18.0,
-    "speedVar": 42.0,
-    "tangentialAccel": 0.0,
-    "tangentialAccelVar": 0.0,
-    "radialAccel": 0.0,
-    "radialAccelVar": 0.0,
+    "speed": 18,
+    "speedVar": 42,
+    "tangentialAccel": 0,
+    "tangentialAccelVar": 0,
+    "radialAccel": 0,
+    "radialAccelVar": 0,
     "rotationIsDir": false,
-    "startRadius": 0.0,
-    "startRadiusVar": 0.0,
-    "endRadius": 0.0,
-    "rotatePerS": 0.0,
-    "rotatePerSVar": 0.0,
-    "_preview": false,
+    "startRadius": 0,
+    "startRadiusVar": 0,
+    "endRadius": 0,
+    "endRadiusVar": 0,
+    "rotatePerS": 0,
+    "rotatePerSVar": 0,
     "playOnLoad": false,
     "autoRemoveOnFinish": false,
+    "_preview": true,
+    "preview": true,
     "_custom": true,
     "_file": null,
     "_spriteFrame": {
@@ -922,5 +680,250 @@
     "instance": null,
     "targetOverrides": null,
     "nestedPrefabInstanceRoots": null
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "dog",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": {
+      "__id__": 1
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 21
+      },
+      {
+        "__id__": 23
+      }
+    ],
+    "_prefab": {
+      "__id__": 25
+    },
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 33554432,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.UITransform",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 20
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 22
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 132,
+      "height": 120
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "638pM1Ig1HzrRNOl+PGqNt"
+  },
+  {
+    "__type__": "cc.Sprite",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 20
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 24
+    },
+    "_customMaterial": null,
+    "_srcBlendFactor": 2,
+    "_dstBlendFactor": 4,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_spriteFrame": {
+      "__uuid__": "a868137f-9417-4dda-a0a4-114becd327d1@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
+    "_type": 0,
+    "_fillType": 0,
+    "_sizeMode": 2,
+    "_fillCenter": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
+    },
+    "_fillStart": 0,
+    "_fillRange": 0,
+    "_isTrimmedMode": false,
+    "_useGrayscale": false,
+    "_atlas": null,
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "f68BD0eO5GbbEhcFk5huVm"
+  },
+  {
+    "__type__": "cc.PrefabInfo",
+    "root": {
+      "__id__": 1
+    },
+    "asset": {
+      "__id__": 0
+    },
+    "fileId": "40rw1aXatFz4B+2fX3CvcV",
+    "instance": null,
+    "targetOverrides": null,
+    "nestedPrefabInstanceRoots": null
+  },
+  {
+    "__type__": "cc.UITransform",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 27
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 80,
+      "height": 80
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "d8R1PeIl9PX6ML72mm41Xt"
+  },
+  {
+    "__type__": "90896Z7NPJAE5YIOF29XCsS",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 29
+    },
+    "dogIcon": {
+      "__id__": 23
+    },
+    "_anim": null,
+    "_trailStreak": {
+      "__id__": 5
+    },
+    "_trailSpark": {
+      "__id__": 11
+    },
+    "_trailStar": {
+      "__id__": 17
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "7dhHJmSUVKbajavICbGEKE"
+  },
+  {
+    "__type__": "cc.Animation",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 31
+    },
+    "playOnLoad": false,
+    "_clips": [
+      {
+        "__uuid__": "98214649-a15b-4102-9324-8a275ec5f460",
+        "__expectedType__": "cc.AnimationClip"
+      },
+      {
+        "__uuid__": "e8089872-34bc-4202-9db8-d36ab818ee22",
+        "__expectedType__": "cc.AnimationClip"
+      },
+      {
+        "__uuid__": "ac8e8e7d-59a9-42ab-9cac-36a348c120c5",
+        "__expectedType__": "cc.AnimationClip"
+      },
+      {
+        "__uuid__": "96af5c16-4187-43bb-bfb7-857d3d334a48",
+        "__expectedType__": "cc.AnimationClip"
+      }
+    ],
+    "_defaultClip": null,
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "e380728c74be4203b17cd5"
+  },
+  {
+    "__type__": "cc.PrefabInfo",
+    "root": {
+      "__id__": 1
+    },
+    "asset": {
+      "__id__": 0
+    },
+    "fileId": "57+hJa4sxDCpzE6HeEDsg5",
+    "instance": null,
+    "targetOverrides": null
   }
 ]
