@@ -14,6 +14,7 @@ import { SoundManager } from '../Module/Resource/SoundManager';
 import { UIManager } from '../Module/UI/UIManager';
 import { ResultPara, UIGameResultView } from './UI/UIGameMain/UIGameResultView';
 import { PuzzleProgress } from './UI/UIPuzzle/PuzzleProgress';
+import { CalendarMath } from './UI/UICalendar/CalendarMath';
 
 // 坐标转换用的临时矩阵。这两个函数在飞行动画里会逐帧调用，
 // 每次 new Mat4 会白白产生垃圾，所以复用。
@@ -104,6 +105,7 @@ export class GameDataManager implements IManager {
      * IsBoardClear() 对空盘面恒为 true，不记这一笔的话空关卡会秒过。
      */
     private _levelHasDogs: boolean = false;
+    public curSelectDate:Date;
 
 
     public static get instance(): GameDataManager {
@@ -334,7 +336,21 @@ export class GameDataManager implements IManager {
         // 赢了就解锁一片拼图。放在 ShowResult 之后是**故意的**：
         // 结算弹窗的弹出动画和这里的读写没有依赖，先弹窗让玩家更快看到反馈；
         // 而拼图界面只在窗口重新可见时才刷新，晚这几毫秒没有影响。
-        if (isWin) this.UnlockPuzzlePiece();
+        if (isWin) 
+        {
+            if (this.gameMode == BattleMode.Puzzle)
+                this.UnlockPuzzlePiece();
+            else if (this.gameMode == BattleMode.Calendar && this.curSelectDate != null)
+            {   
+                let _today = this.curSelectDate;
+                let _done = CalendarMath.parseDone(
+                        CacheManager.instance.getString(CacheKeys.DailyDone, ""));
+                const key = CalendarMath.dateKey(_today);
+                _done.add(key);
+                CacheManager.instance.setString(CacheKeys.DailyDone,
+                                        CalendarMath.serializeDone(_done));
+            }
+        }
     }
 
     // ---------------------------------------------------------------- 拼图活动

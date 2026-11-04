@@ -254,7 +254,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         this._today = CalendarMath.startOfDay(new Date());
         this._done = CalendarMath.parseDone(
             CacheManager.instance.getString(CacheKeys.DailyDone, ""));
-
+        this.setDayDone(this._today, true);
         this._monthIndex = CalendarMath.indexOfDate(this._today);
         this.render();
         this.bindButtons();
@@ -584,6 +584,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         if (this._selectedKey != null && this.onDaySelected != null)
         {
             const date = new Date(year, month - 1, day);
+            GameDataManager.instance.curSelectDate = date;
             this.onDaySelected(date, CalendarMath.stateOf(year, month, day, this._today, this._done));
         }
     }

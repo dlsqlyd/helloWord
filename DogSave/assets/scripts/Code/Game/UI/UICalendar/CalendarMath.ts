@@ -55,7 +55,7 @@ export class CalendarMath
 {
     /** 可翻页区间：2026-11-01 .. 2036-12-31（共 122 个月） */
     public static readonly START_YEAR: number = 2026;
-    public static readonly START_MONTH: number = 11;
+    public static readonly START_MONTH: number = 1;
     public static readonly END_YEAR: number = 2036;
     public static readonly END_MONTH: number = 12;
 
