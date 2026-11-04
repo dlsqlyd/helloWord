@@ -3,6 +3,7 @@ import { IManager } from "../../Mono/Core/Manager/IManager"
 import { JsonType } from '../../Mono/Helper/JsonHelper';
 import { DateItem } from './UI/UIMain/DateItem';
 import { CacheManager } from '../Module/Player/CacheManager';
+import { CacheKeys } from '../Module/Const/CacheKeys';
 import { ConfigManager } from '../Module/Config/ConfigManager';
 import { Log } from '../../Mono/Module/Log/Log';
 import { GameMainObj } from './UI/UIGameMain/GameMainObj';
@@ -12,6 +13,7 @@ import { DogColor, DOG_SFX_SAD } from './UI/UIGameMain/DogNode';
 import { SoundManager } from '../Module/Resource/SoundManager';
 import { UIManager } from '../Module/UI/UIManager';
 import { ResultPara, UIGameResultView } from './UI/UIGameMain/UIGameResultView';
+import { PuzzleProgress } from './UI/UIPuzzle/PuzzleProgress';
 
 // 坐标转换用的临时矩阵。这两个函数在飞行动画里会逐帧调用，
 // 每次 new Mat4 会白白产生垃圾，所以复用。
@@ -72,6 +74,15 @@ export class GameDataManager implements IManager {
     public curLevelConfig:LevelConfig;
     public gameMainObj:GameMainObj;
     public isCanClick:boolean = true;
+
+    /**
+     * 上一次过关解锁的拼图碎片下标，-1 = 没有（没赢 / 已经集满 / 已经被取走）。
+     *
+     * 只是一个"刚刚发生了什么"的提示位，**不是**存档 —— 存档在
+     * `CacheKeys.PuzzleUnlocked` 里，由 `UnlockPuzzlePiece()` 写。
+     * 拼图界面打开时把它当 `UIPuzzlePara.highlight` 传进去弹一下，取完置 -1。
+     */
+    public lastUnlockedPiece:number = -1;
 
 
     // ---------------------------------------------------------------- 关卡流程
@@ -297,6 +308,62 @@ export class GameDataManager implements IManager {
         this.curSelectRoomIdx = -1;
         this.ShowResult(isWin);
         this.gameMainObj.unscheduleAllCallbacks();
+
+        // 赢了就解锁一片拼图。放在 ShowResult 之后是**故意的**：
+        // 结算弹窗的弹出动画和这里的读写没有依赖，先弹窗让玩家更快看到反馈；
+        // 而拼图界面只在窗口重新可见时才刷新，晚这几毫秒没有影响。
+        if (isWin) this.UnlockPuzzlePiece();
+    }
+
+    // ---------------------------------------------------------------- 拼图活动
+    //
+    // 拼图活动**没有独立的系统**（没有活动配置、没有次数、没有奖励表），
+    // 这里只实现需求里那一句："胜利回来就可以随机解锁一个碎片"。
+    // 所以规则极简：过关 -> 从还没解锁的碎片里随机挑一片 -> 写缓存。
+    //
+    // 为什么挂在 FinishLevel 而不是结算弹窗里：FinishLevel 是**所有**关卡出口
+    // （超时 / 清盘 / 调试入口）的唯一汇合点，而且开头就有 `levelState != Playing`
+    // 的早退，天然幂等 —— 连点、重复回调都不会解锁两片。
+
+    /**
+     * 随机解锁一片拼图，返回下标；已经集满时返回 -1（不写缓存）。
+     *
+     * ⚠️ 解锁口径是"每赢一局一片"，所以刷同一个关卡 16 次也能集满。
+     *    要限制（例如每天一次 / 只在新关卡首胜解锁），改这一个函数即可，
+     *    界面和缓存格式都不用动。
+     */
+    public UnlockPuzzlePiece(): number
+    {
+        const raw: string = CacheManager.instance.getString(CacheKeys.PuzzleUnlocked, "");
+        const flags: boolean[] = PuzzleProgress.parse(raw);
+
+        const idx: number = PuzzleProgress.pickRandom(flags);
+        if (idx < 0)
+        {
+            // 集满了。把提示位清掉，否则界面会一直高亮最后一片
+            this.lastUnlockedPiece = -1;
+            return -1;
+        }
+
+        flags[idx] = true;
+        CacheManager.instance.setString(CacheKeys.PuzzleUnlocked, PuzzleProgress.serialize(flags));
+        this.lastUnlockedPiece = idx;
+        return idx;
+    }
+
+    /** 已解锁的碎片数量（0..16） */
+    public GetPuzzleUnlockedCount(): number
+    {
+        const raw: string = CacheManager.instance.getString(CacheKeys.PuzzleUnlocked, "");
+        return PuzzleProgress.count(PuzzleProgress.parse(raw));
+    }
+
+    /** 取走"刚解锁"的提示位（取完置 -1）。界面打开时用，避免同一片被高亮两次 */
+    public ConsumeLastUnlockedPiece(): number
+    {
+        const idx: number = this.lastUnlockedPiece;
+        this.lastUnlockedPiece = -1;
+        return idx;
     }
 
     /**

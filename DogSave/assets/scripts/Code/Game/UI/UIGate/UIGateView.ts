@@ -10,6 +10,8 @@ import { GameDataManager } from "../../GameDataManager";
 import { UISettingView } from "../UISetting/UISettingView";
 import { UICalendarView } from "../UICalendar/UICalendarView";
 import { UIGameMainView } from "../UIGameMain/UIGameMainView";
+import { UIPuzzlePara, UIPuzzleView } from "../UIPuzzle/UIPuzzleView";
+import { PuzzleProgress } from "../UIPuzzle/PuzzleProgress";
 import { UIToast } from "../UICommon/UIToast";
 
 // ---------------------------------------------------------------------------
@@ -42,14 +44,15 @@ import { UIToast } from "../UICommon/UIToast";
 //   开始游戏     -> 关卡界面（UIGameMainView，真接通；不关大门，关卡关掉后回到这里）
 //   加号         -> 商店：**工程里没有商店**，弹提示
 //   开始(红卡)   -> 日历界面（UICalendarView，真接通；日历的返回键回到大门）
-//   参与(黄卡)   -> 拼图活动：**系统不存在**，弹提示
+//   参与(黄卡)   -> 拼图活动（UIPuzzleView，真接通；拼图的返回键回到大门）
 //
-//   金币数字读 CacheKeys.Coin（缺省 0，工程里还没有钱包）；"0/9" 没有数据源，
-//   预制体里是静态文本，等有拼图系统了调 `setPuzzleProgress()` 即可。
+//   金币数字读 CacheKeys.Coin（缺省 0，工程里还没有钱包）；拼图进度读
+//   CacheKeys.PuzzleUnlocked（`GameDataManager.UnlockPuzzlePiece()` 在过关时写）。
 export class GateProgress
 {
     public done: number = 0;
-    public total: number = 9;
+    /** 碎片总数，和拼图界面一致（4x4） */
+    public total: number = PuzzleProgress.TOTAL;
 }
 
 @UIView("UIGateView")
@@ -73,6 +76,9 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
     private _progressLabel: Label = null;
 
     private _progress: GateProgress = new GateProgress();
+
+    /** `setPuzzleProgress()` 被调过之后置 true：refreshProgress() 就不再从缓存覆盖 */
+    private _progressOverride: boolean = false;
 
     /** 按钮 + 各自的回调。onDisable 要用同一份引用摘监听，所以存起来而不是现场 new */
     private _buttons: Button[] = null;
@@ -148,19 +154,32 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
     }
 
     /**
-     * 拼图进度。拼图活动系统还不存在，这里只是留好接口，
-     * 免得以后有数据了还要回来改预制体。
+     * 手动指定拼图进度（调试 / 以后有别的数据源时用）。
+     * 调过之后 `refreshProgress()` 不再覆盖它 —— 见 `_progressOverride`。
      */
     public setPuzzleProgress(done: number, total: number): void
     {
+        this._progressOverride = true;
         this._progress.done = Math.max(0, Math.floor(done));
         this._progress.total = Math.max(0, Math.floor(total));
         this.refreshProgress();
     }
 
+    /**
+     * 刷新拼图进度。
+     *
+     * 数据源是 `CacheKeys.PuzzleUnlocked`（过关时由 `GameDataManager.UnlockPuzzlePiece()` 写）。
+     * 原先这里是两个写死的数（0/9），而拼图是 4x4=16 片 —— 两屏对不上，
+     * 现在统一读同一个来源，总数取 `PuzzleProgress.TOTAL`。
+     */
     public refreshProgress(): void
     {
         if (this._progressLabel == null) return;
+        if (!this._progressOverride && GameDataManager.instance != null)
+        {
+            this._progress.done = GameDataManager.instance.GetPuzzleUnlockedCount();
+            this._progress.total = PuzzleProgress.TOTAL;
+        }
         this._progressLabel.string = `${this._progress.done}/${this._progress.total}`;
     }
 
@@ -214,8 +233,13 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
 
     private onClickPuzzle(): void
     {
-        // 拼图活动系统不存在（"0/9" 是效果图里的静态数字）
-        UIToast.showToast("拼图活动还没做");
+        // 真打开拼图界面。刚解锁的那片带过去弹一下 —— ConsumeLastUnlockedPiece()
+        // 会顺手把提示位清掉，所以同一片只高亮一次（来回开关不会一直闪）。
+        const para = new UIPuzzlePara();
+        para.highlight = GameDataManager.instance != null
+            ? GameDataManager.instance.ConsumeLastUnlockedPiece()
+            : -1;
+        UIManager.instance.openWindow(UIPuzzleView, UIPuzzleView.PrefabPath, para);
     }
 
     private async onClickPlay(): Promise<void>

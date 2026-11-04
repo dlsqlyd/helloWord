@@ -33,4 +33,18 @@ export class CacheKeys{
      * 日历界面读它来决定哪些格子画"浅绿底 + 对勾"。
      */
     public static readonly DailyDone = "DailyDone";
+
+    /**
+     * 拼图活动里**已经解锁**的碎片下标，逗号分隔、升序，例如 `0,3,7`。
+     * 空串 / 缺省 = 一片都没解锁（**不是**全部解锁）。
+     *
+     * 写入方：`GameDataManager.UnlockPuzzlePiece()`（过关时随机挑一片还没解锁的）。
+     * 读取方：`UIPuzzleView`（画 16 个格子的锁定/解锁）、`UIGateView`（大门拼图卡的 n/16）。
+     * 解析/序列化/随机挑片在 `Game/UI/UIPuzzle/PuzzleProgress.ts` 里，**不 import cc**，
+     * 可以离线跑断言（`uipuzzle_src/test_puzzle_progress.js`）。
+     *
+     * ⚠️ 格式不要改成位掩码：16 片没问题，但以后扩到 32 片以上就要动 BigInt，
+     *    而存档已经在玩家手机上了，改格式要做迁移。
+     */
+    public static readonly PuzzleUnlocked = "PuzzleUnlocked";
 }
