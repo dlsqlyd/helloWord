@@ -8,6 +8,7 @@ import { CacheManager } from "../../../Module/Player/CacheManager";
 import { CacheKeys } from "../../../Module/Const/CacheKeys";
 import { UIGameMainView } from "../UIGameMain/UIGameMainView";
 import { PuzzleProgress } from "./PuzzleProgress";
+import { BattleMode, GameDataManager } from "../../GameDataManager";
 
 // ---------------------------------------------------------------------------
 // 拼图活动界面（Puzzle Event）
@@ -387,6 +388,7 @@ export class UIPuzzleView extends UIBaseView implements IOnCreate, IOnEnable<UIP
         if (now - this._lastStartAt < UIPuzzleView.START_DEBOUNCE_MS) return;
         this._lastStartAt = now;
 
+        GameDataManager.instance.SetGameMode(BattleMode.Puzzle);
         UIManager.instance.openWindow(UIGameMainView, UIGameMainView.PrefabPath)
             .then(() => {
                 // 关卡窗口关掉了 —— 这中间玩家可能赢了一局并解锁了新碎片。
@@ -397,6 +399,7 @@ export class UIPuzzleView extends UIBaseView implements IOnCreate, IOnEnable<UIP
             .catch((e) => {
                 console.warn("[UIPuzzleView] 打开关卡界面失败: " + e);
             });
+        GameDataManager.instance.OnResultButton(false);
     }
 
     // -----------------------------------------------------------------------

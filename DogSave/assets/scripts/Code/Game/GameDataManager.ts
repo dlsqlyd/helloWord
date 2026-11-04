@@ -1,4 +1,4 @@
-import { Camera, find, Mat4, Node, UITransform, Vec3, _decorator, view, Vec2, Layers } from 'cc';
+import { Camera, find, Mat4, Node, UITransform, Vec3, _decorator, view, Vec2, Layers, game } from 'cc';
 import { IManager } from "../../Mono/Core/Manager/IManager"
 import { JsonType } from '../../Mono/Helper/JsonHelper';
 import { DateItem } from './UI/UIMain/DateItem';
@@ -64,6 +64,13 @@ export enum LevelState
     Lose,
 }
 
+// 枚举定义
+export enum BattleMode {
+    Main, //主线模式
+    Calendar, //日历模式
+    Puzzle, //拼图模式
+}
+
 export class GameDataManager implements IManager {
     private static _instance: GameDataManager;
     private datas: LevelDatas;
@@ -90,6 +97,7 @@ export class GameDataManager implements IManager {
     public curTime: number = 0;
     /** 本关状态。见 LevelState */
     public levelState: LevelState = LevelState.None;
+    public gameMode:BattleMode = BattleMode.Main;
     /**
      * 开局时盘面上到底有没有狗。
      * 用来挡住「空关卡一铺完盘就立刻判定过关」这个退化情况 ——
@@ -108,8 +116,13 @@ export class GameDataManager implements IManager {
 
     public async init() {
         GameDataManager._instance = this;
-        await this.LoadLevelConfig();
         // Messager.Instance.AddListener<int, int>(0, MessageId.OnKeyInput, OnKeyInput);
+    }
+
+    public async SetGameMode(mode:BattleMode)
+    {
+        this.gameMode = mode;
+        await this.LoadLevelConfig();
     }
 
     public async LoadLevelConfig()
@@ -136,7 +149,7 @@ export class GameDataManager implements IManager {
         // 所以走到这一行时 CacheManager._instance 一定已经建好了。
         //
         // ⚠️ 调试时想固定从某一关起，把下面这行换成： this.curFightLevelId = 56;
-        this.curFightLevelId = 1;//CacheManager.instance.getInt("FightLevelId", 1);
+        this.curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
         // 夹到合法区间。上界这条原来就有；下界是新加的 ——
         // 存档被改坏（0 / 负数）时 GetLevelCfgById 会返回 undefined，
         // 紧接着 CloneLevelCfg 读 oldCfg.id 直接崩。

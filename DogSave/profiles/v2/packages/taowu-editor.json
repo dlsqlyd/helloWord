@@ -80,7 +80,7 @@
       "1792505210191": {
         "enableObfuscate": true,
         "generateManifest": true,
-        "version": "1793111020524",
+        "version": "1793794630437",
         "channel": "default",
         "__version__": "1.0.0"
       },
@@ -167,7 +167,7 @@
       "wechatgame": {
         "enableObfuscate": true,
         "generateManifest": true,
-        "version": "1793111020524",
+        "version": "1793794630437",
         "channel": "default",
         "__version__": "1.0.0"
       },

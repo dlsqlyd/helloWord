@@ -6,7 +6,7 @@ import { UIBaseView, UIView } from "../../../Module/UI/UIBaseView";
 import { UIManager } from "../../../Module/UI/UIManager";
 import { CacheManager } from "../../../Module/Player/CacheManager";
 import { CacheKeys } from "../../../Module/Const/CacheKeys";
-import { GameDataManager } from "../../GameDataManager";
+import { BattleMode, GameDataManager } from "../../GameDataManager";
 import { UISettingView } from "../UISetting/UISettingView";
 import { UICalendarView } from "../UICalendar/UICalendarView";
 import { UIGameMainView } from "../UIGameMain/UIGameMainView";
@@ -250,6 +250,7 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
         {
             // ⚠️ 不关大门：关卡界面关掉之后要能回到这里。
             //    如果以后关卡界面改成"关掉即退出到登录"，这里要跟着改。
+            GameDataManager.instance.SetGameMode(BattleMode.Main);
             await UIManager.instance.openWindow(UIGameMainView, UIGameMainView.PrefabPath);
             GameDataManager.instance.OnResultButton(false);
         }

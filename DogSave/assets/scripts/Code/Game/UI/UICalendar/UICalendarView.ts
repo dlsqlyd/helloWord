@@ -9,7 +9,7 @@ import { CacheKeys } from "../../../Module/Const/CacheKeys";
 import { UIGameMainView } from "../UIGameMain/UIGameMainView";
 import { UIToast } from "../UICommon/UIToast";
 import { CalendarMath, DayState } from "./CalendarMath";
-import { GameDataManager } from "../../GameDataManager";
+import { BattleMode, GameDataManager } from "../../GameDataManager";
 
 // ---------------------------------------------------------------------------
 // 日历界面（每日挑战日历）
@@ -616,6 +616,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         this._openingGame = true;
         try
         {
+            GameDataManager.instance.SetGameMode(BattleMode.Calendar);
             await UIManager.instance.openWindow(UIGameMainView, UIGameMainView.PrefabPath);
             GameDataManager.instance.OnResultButton(false);
         }
