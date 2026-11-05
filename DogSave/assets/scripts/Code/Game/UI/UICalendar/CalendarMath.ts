@@ -68,17 +68,9 @@ export interface GridLayout
 
 export class CalendarMath
 {
-    /** 可翻页区间：2026-11-01 .. 2036-12-31（共 122 个月） */
+    /** 可翻页区间：2026-01-01 .. 2036-12-31） */
     public static readonly START_YEAR: number = 2026;
-    /**
-     * ⚠️ 是 11，不是 1。
-     *
-     * 写成 1 时区间会变成 2026-01..2036-12（132 个月），2026 年 1~10 月全部
-     * 落进"到期未完成"（Missed）—— 每日挑战根本还没上线，玩家却看到 10 个月
-     * 的漏做记录。`uicalendar_src/test_calendar_math.js` 第 [1] 组会直接报
-     * 「起始月 期望=11 实际=1 / 总月数 期望=122 实际=132」。
-     */
-    public static readonly START_MONTH: number = 11;
+    public static readonly START_MONTH: number = 1;
     public static readonly END_YEAR: number = 2036;
     public static readonly END_MONTH: number = 12;
 
