@@ -1,4 +1,4 @@
-import { _decorator, sys } from "cc"
+import { _decorator, sys, input, Input } from "cc"
 const { ccclass } = _decorator;
 import { Log } from "../Mono/Module/Log/Log"
 import { ManagerProvider } from "../Mono/Core/Manager/ManagerProvider"
@@ -82,5 +82,31 @@ export class Entry
         ManagerProvider.registerManager(SoundManager);
         ManagerProvider.registerManager(GameDataManager);
         await SceneManager.instance.switchScene(LoginScene);
+        await Entry.startBgm();
+    }
+
+    /**
+     * 起播背景音乐。
+     *
+     * ⚠️ 必须先 await `SoundManager.Ready`：`init()` 里的 `initAsync()` 是**不 await**
+     * 的 —— 它要先异步加载 `audio/common/source` 预制体，才有 AudioSource 可用。
+     * 抢跑会走到 `createAudioSource()`、因为 soundsClipClone 还是 null 而返回 null，
+     * 于是 playMusic 静默返回 0n，**一声都不出、也不报错**。
+     *
+     * ⚠️ 浏览器 / 小游戏在玩家第一次交互之前不允许自动播放，`play()` 不出声也不抛异常。
+     * 所以再挂一个一次性触摸回调补播。`playMusic` 对同一路径走"已存在"分支，
+     * 只在 `!playing` 时补一次 `play()` —— 已经在播时是空操作，不会把曲子重头放。
+     */
+    private static async startBgm() {
+        const sm = SoundManager.instance;
+        if (sm == null) return;
+        await sm.Ready;
+        sm.playMusic(SoundManager.BGM_MAIN);
+
+        const resume = () => {
+            input.off(Input.EventType.TOUCH_START, resume);
+            SoundManager.instance?.playMusic(SoundManager.BGM_MAIN);
+        };
+        input.on(Input.EventType.TOUCH_START, resume);
     }
 }

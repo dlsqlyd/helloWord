@@ -100,10 +100,11 @@ export class DoorNode extends Component {
 
     public async RfreshDogSprite()
     {
+        this.RfreshDoorSprite();
         let imgPath:string = "ui/uigamemain/atlas/";   
         let icon:string = "battle_alpha"; 
-        this.openCarIcon.node.active = this.doorState == DoorState.Open;
-        this.closeCarIcon.node.active = this.doorState != DoorState.Open;
+        this.openCarIcon.node.active = true;
+        this.closeCarIcon.node.active = false;
         if (this.doorState == DoorState.Idle || this.doorState == DoorState.Open)
         {
             switch(this.waitDogColor)
@@ -140,6 +141,48 @@ export class DoorNode extends Component {
         var sprite = await ImageLoaderManager.instance.loadSpriteAsync(imgPath + icon);      
         this.dogIcon.spriteFrame = sprite;
     }
+
+    public async RfreshDoorSprite()
+    {
+        let imgPath:string = "ui/uigamemain/atlas/";   
+        let icon:string = "doghouse-pure-grey-empty"; 
+        if (this.doorState == DoorState.Idle || this.doorState == DoorState.Open)
+        {
+            switch(this.waitDogColor)
+            {
+                case DogColor.Orange:
+                    icon = "doghouse-orange-empty";
+                    break;
+                case DogColor.Pink:
+                    icon = "doghouse-pink-empty";
+                    break;
+                case DogColor.Blue:
+                    icon = "doghouse-blue-empty";
+                    break;
+                case DogColor.Green:
+                    icon = "doghouse-green-empty";
+                    break;
+                case DogColor.Purple:
+                    icon = "doghouse-purple-empty";
+                    break;
+                case DogColor.Yellow:
+                    icon = "doghouse-yellow-empty";
+                    break;
+                case DogColor.Mint:
+                    icon = "doghouse-mint-empty";
+                    break;
+                case DogColor.Grey:
+                    icon = "doghouse-grey-empty";
+                    break;
+                case DogColor.None:
+                    icon = "doghouse-pure-grey-empty";
+                    break
+            } 
+        }
+        var sprite = await ImageLoaderManager.instance.loadSpriteAsync(imgPath + icon);      
+        this.openCarIcon.spriteFrame = sprite;
+    }
+
 
     /** 狗狗飞入时播放。由 DogNode.FlyToCarDoor 的 tween 完成回调调用。 */
     PlayHitEff() 

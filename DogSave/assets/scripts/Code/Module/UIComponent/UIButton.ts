@@ -77,7 +77,7 @@ export class UIButton extends UIBaseContainer implements IOnDestroy {
     }
 
     private onClickEvent(button: Button){
-        if(!!this.playSound) SoundManager.instance.playSound("audio/sound/commonclick");
+        if(!!this.playSound && SoundManager.instance != null) SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         if(!!this.onClick){
             this.onClick()
         }

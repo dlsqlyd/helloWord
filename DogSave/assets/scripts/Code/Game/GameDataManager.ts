@@ -304,6 +304,16 @@ export class GameDataManager implements IManager {
         this.isCanClick = true;
         this.levelState = isWin ? LevelState.Win : LevelState.Lose;
 
+        // 过关 / 失败音效。
+        // 挂在这里而不是 ShowResult 里：FinishLevel 是**所有**关卡出口（超时 / 清盘 /
+        // 调试入口）的唯一汇合点，且函数开头已经做了 `levelState != Playing` 的早退
+        // ⇒ 天然幂等，连点或重复回调都不会把音效叠两遍。
+        // 先出声再弹窗：结算框有 0.2s 左右的弹出动画，声音跟着动画一起起才有反馈感。
+        if (SoundManager.instance != null)
+        {
+            SoundManager.instance.playSound(isWin ? SoundManager.SFX_WIN : SoundManager.SFX_FAIL);
+        }
+
         // ⚠️ 先把还悬着的狗放回椅子，**再**清选中态 —— 顺序不能反。
         //    下面两行把 curSelectChairIdx / curSelectRoomIdx 清成 -1 之后，
         //    就再也说不出"哪根椅子在悬浮"了，那批 AnimDog 就永远回不了池子。

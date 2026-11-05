@@ -9,6 +9,7 @@ import { UIBaseView, UIView } from "../../../Module/UI/UIBaseView";
 import { MenuPara } from "../UICommon/UIMenu";
 import { UIManager } from "../../../Module/UI/UIManager";
 import { UIGateView } from "../UIGate/UIGateView";
+import { UIGameMainView } from "./UIGameMainView";
 
 // ---------------------------------------------------------------------------
 // 结算界面的弹出动画
@@ -330,6 +331,7 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
 
     private async onClickHome() { 
         await this.closeSelf();
+        await UIManager.instance.destroyWindow<UIGameMainView>(UIGameMainView);
         await UIManager.instance.openWindow(UIGateView, UIGateView.PrefabPath);
      }
 

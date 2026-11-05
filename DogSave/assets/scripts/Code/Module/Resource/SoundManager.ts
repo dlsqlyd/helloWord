@@ -127,12 +127,40 @@ export class SoundManager implements IManager {
 
     public static readonly DEFAULTVALUE = 10;
 
+    // ---- 音频资源路径 -------------------------------------------------------
+    // 路径相对 `assets/assetsPackage`，由 ResourceManager.getBundleAndAssetName
+    // 拆成 bundle `audio_sound` + 资源名（"audio/sound/x" → audio_sound / x）。
+    // 文件名改了这里必须同步，否则只在运行时打一条 console.error，
+    // playSound 静默返回 0n —— 不会有任何异常提示。
+    /** 按钮点击（UIButton 的 playSound 开关打开时自动播） */
+    public static readonly SFX_CLICK = "audio/sound/commonclick";
+    /** 过关 */
+    public static readonly SFX_WIN = "audio/sound/sfx_win";
+    /** 失败 */
+    public static readonly SFX_FAIL = "audio/sound/sfx_fail";
+    /** 背景音乐（循环播放） */
+    public static readonly BGM_MAIN = "audio/sound/bgm_main";
+
     private soundItems = new Map<bigint, SoundItem>();
     private soundsPool: AudioSource[] = [];
     private curMusic: SoundItem = null;
     private soundsRoot: Node = null;
 
     private soundsClipClone: Prefab;
+
+    /**
+     * 初始化完成信号。
+     *
+     * `init()` 里的 `initAsync()` 是**不 await** 的 —— 它要先异步加载
+     * `audio/common/source` 预制体，才有 AudioSource 可用。所以在 init() 之后
+     * 立刻 playMusic / playSound，`getAudioSource()` 会走到 `createAudioSource()`、
+     * 因为 soundsClipClone 还是 null 而返回 null ⇒ **静默不播**（只返回 0n）。
+     * 启动阶段要起播 BGM 的调用方必须先 await 这个 Promise。
+     */
+    private _ready: Promise<void> = null;
+    private _markReady: () => void = null;
+
+    public get Ready(): Promise<void> { return this._ready; }
 
     private musicVolume: number = 10;
     private soundVolume: number = 10;
@@ -142,21 +170,27 @@ export class SoundManager implements IManager {
     public init(): void {
 
         SoundManager._instance = this;
+        this._ready = new Promise<void>((resolve) => { this._markReady = resolve; });
         this.initAsync();
     }
     private async initAsync()
     {
-        this.soundsRoot = new Node('SoundsRoot');
-        director.addPersistRootNode(this.soundsRoot);
-        this.soundsClipClone = await ResourceManager.instance.loadAsync<Prefab>(Prefab,"audio/common/source");
-        // 初始化音频池
-        for (let i = 0; i < INITSOUNDCOUNT; i++) {
-            this.soundsPool.push(this.createAudioSource());
-        }
+        try {
+            this.soundsRoot = new Node('SoundsRoot');
+            director.addPersistRootNode(this.soundsRoot);
+            this.soundsClipClone = await ResourceManager.instance.loadAsync<Prefab>(Prefab,"audio/common/source");
+            // 初始化音频池
+            for (let i = 0; i < INITSOUNDCOUNT; i++) {
+                this.soundsPool.push(this.createAudioSource());
+            }
 
-        // 加载音量设置
-        this.setMusicVolume(CacheManager.instance.getInt(CacheKeys.MusicVolume, 10));
-        this.setSoundVolume(CacheManager.instance.getInt(CacheKeys.SoundVolume, 10));
+            // 加载音量设置
+            this.setMusicVolume(CacheManager.instance.getInt(CacheKeys.MusicVolume, 10));
+            this.setSoundVolume(CacheManager.instance.getInt(CacheKeys.SoundVolume, 10));
+        } finally {
+            // 即使加载失败也要放行，否则 await Ready 的调用方会永远挂住
+            if (this._markReady) { this._markReady(); this._markReady = null; }
+        }
     }
 
     public destroy(): void {
