@@ -8,5 +8,25 @@
       "fitWidth": false
     }
   },
-  "custom_joint_texture_layouts": []
+  "custom_joint_texture_layouts": [],
+  "sorting-layer": {
+    "layers": [
+      {
+        "id": 0,
+        "name": "default",
+        "value": 0
+      },
+      {
+        "id": 1,
+        "name": "Sorting Layer 1",
+        "value": 1
+      },
+      {
+        "id": 2,
+        "name": "Sorting Layer 2",
+        "value": 2
+      }
+    ],
+    "increaseId": 2
+  }
 }
