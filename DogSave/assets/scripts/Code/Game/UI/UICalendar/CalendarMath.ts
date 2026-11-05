@@ -36,6 +36,21 @@ export enum DayState
  * 两者正交。对外仍然提供五种语义，见 `UICalendarView.getCellState()`。
  */
 
+/**
+ * `markDone()` 的结果。写入方（GameDataManager）靠它决定要不要落盘 / 要不要打日志。
+ */
+export enum DailyMarkResult
+{
+    /** 新记上，需要落盘 */
+    Added = 0,
+    /** 之前就记过，幂等命中，不用落盘 */
+    Duplicate = 1,
+    /** 未来日期，**拒绝**（不写） */
+    Future = 2,
+    /** 日期本身非法（0 号 / 32 号） */
+    Invalid = 3,
+}
+
 export interface MonthRef
 {
     year: number;
@@ -55,7 +70,15 @@ export class CalendarMath
 {
     /** 可翻页区间：2026-11-01 .. 2036-12-31（共 122 个月） */
     public static readonly START_YEAR: number = 2026;
-    public static readonly START_MONTH: number = 1;
+    /**
+     * ⚠️ 是 11，不是 1。
+     *
+     * 写成 1 时区间会变成 2026-01..2036-12（132 个月），2026 年 1~10 月全部
+     * 落进"到期未完成"（Missed）—— 每日挑战根本还没上线，玩家却看到 10 个月
+     * 的漏做记录。`uicalendar_src/test_calendar_math.js` 第 [1] 组会直接报
+     * 「起始月 期望=11 实际=1 / 总月数 期望=122 实际=132」。
+     */
+    public static readonly START_MONTH: number = 11;
     public static readonly END_YEAR: number = 2036;
     public static readonly END_MONTH: number = 12;
 
@@ -296,5 +319,37 @@ export class CalendarMath
         // 排序只是为了存档好读、diff 稳定，逻辑上不依赖顺序
         out.sort();
         return out.join(",");
+    }
+
+    /**
+     * 把某一天记成"已完成"，**就地修改** `done`。
+     *
+     * 这是每日挑战唯一的写入判据，所以放在这个不依赖 cc 的文件里，能被离线单测覆盖
+     * （`uicalendar_src/test_calendar_math.js` 第 [8] 组）。
+     *
+     * 三条规则，顺序有意义：
+     *   1. 日期非法（0 / 32 号）→ Invalid，不写；
+     *   2. **未来日期 → Future，不写**。界面已经拦了，但数据层不能只靠界面：
+     *      `stateOf` 是"先判 Locked 再判 Done"，写进去当天之前完全看不出来，
+     *      一到那天格子直接变"已完成" —— 这种脏数据要几天后才穿帮；
+     *   3. 已在集合里 → Duplicate（幂等，同一天赢两次不会重复写缓存）。
+     *
+     * 返回值**不**包含"要不要落盘"之外的语义，调用方只在 Added 时写缓存。
+     */
+    public static markDone(done: Set<string>, year: number, month: number, day: number,
+                           today: Date): DailyMarkResult
+    {
+        if (done == null) return DailyMarkResult.Invalid;
+        if (day < 1 || day > CalendarMath.daysInMonth(year, month)) return DailyMarkResult.Invalid;
+
+        const d = new Date(year, month - 1, day);
+        const t = CalendarMath.startOfDay(today);
+        if (d.getTime() > t.getTime()) return DailyMarkResult.Future;
+
+        const key = CalendarMath.dayKey(year, month, day);
+        if (done.has(key)) return DailyMarkResult.Duplicate;
+
+        done.add(key);
+        return DailyMarkResult.Added;
     }
 }

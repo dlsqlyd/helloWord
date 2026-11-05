@@ -4,8 +4,6 @@ import { IOnDisable } from "../../../Module/UI/IOnDisable";
 import { IOnEnable } from "../../../Module/UI/IOnEnable";
 import { UIBaseView, UIView } from "../../../Module/UI/UIBaseView";
 import { UIManager } from "../../../Module/UI/UIManager";
-import { CacheManager } from "../../../Module/Player/CacheManager";
-import { CacheKeys } from "../../../Module/Const/CacheKeys";
 import { UIGameMainView } from "../UIGameMain/UIGameMainView";
 import { UIToast } from "../UICommon/UIToast";
 import { CalendarMath, DayState } from "./CalendarMath";
@@ -68,16 +66,24 @@ import { SoundManager } from "../../../Module/Resource/SoundManager";
 // ## 哪些是真接通的
 //
 //   返回        关掉自己（closeSelf）
-//   左右箭头    翻月，到边界禁用并置灰
-//   日期格      选中/取消选中（只画环，**没有消费方**，见下面"待定"）
-//   开始今日挑战 打开关卡界面（工程里没有"每日挑战"玩法，这是唯一真能玩的东西）
+//   左右箭头    翻月，到边界禁用并置灰；翻到别的月份会清掉选中（见 syncSelectionToMonth）
+//   日期格      单选，**不能取消**（点同一格不生效）—— 选中即 `GameDataManager.curSelectDate`
+//   开始今日挑战 校验选中日状态后打开关卡界面（工程里没有"每日挑战"玩法，走的是普通关卡）
 //
-// ## 待定（没有擅自决定）
+// ## 数据归属
 //
-//   · 选中之后做什么：工程里没有"每日挑战内容"，所以现在选中只画环，
-//     对外留了 `onDaySelected` 回调和 `getSelectedDate()`，有玩法了再接。
-//   · 完成数据从哪来：没有每日挑战系统，`CacheKeys.DailyDone` 只会被
-//     `setDayDone()` 写入。真系统接进来时调它即可，界面不用改。
+//   完成数据**不在本界面**：`GameDataManager` 持有 `_dailyDone`，
+//   打开本界面时 `LoadDailyProgress()` 从 `CacheKeys.DailyDone` 解析一次，
+//   打赢后由 `GameDataManager.FinishLevel()` → `MarkDailyDone()` 落盘。
+//   这里只通过 `GetDailyDone()` 读来渲染，**不写**。
+//
+//   以前这里自己也 parse 一份 `_done`，还在 onEnable 里 `setDayDone(today, true)`
+//   —— 打开一次日历就把今天记成已完成，存档直接被污染。
+//
+// ## 待定
+//
+//   · 选中之后做什么：工程里没有"每日挑战内容"，所以选中只记在 `curSelectDate`
+//     上（`onClickStart` 用它开一局），对外留了 `onDaySelected` 回调。
 //   · 要不要"回到今天"：`jumpToToday()` 已经写好，但**没有挂按钮**（产品决策）。
 export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, IOnDisable
 {
@@ -157,10 +163,22 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     // ---- 数据 ----
     private _monthIndex: number = 0;
     private _today: Date = null;
-    private _done: Set<string> = null;
     private _selectedKey: string = null;
     /** 当前月 42 个格子里的日期（null = 不属于本月） */
     private _gridDays: (number | null)[] = null;
+
+    /**
+     * 完成集合**不在这里存**。
+     *
+     * 它归 `GameDataManager` 所有（`LoadDailyProgress` / `GetDailyDone` / `MarkDailyDone`），
+     * 这里每次用到时现取。原先界面自己也 parse 一份 `_done`，于是「缓存 / 界面副本 /
+     * GameDataManager 里再 parse 的一份」三份数据互相覆盖 —— 再加上 onEnable 里那句
+     * `setDayDone(today, true)`，每开一次日历就把今天记成已完成。
+     */
+    private get dailyDone(): Set<string>
+    {
+        return GameDataManager.instance.GetDailyDone();
+    }
 
     private _openingGame: boolean = false;
 
@@ -248,15 +266,25 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     public onEnable()
     {
         this._openingGame = false;
-        this._selectedKey = null;
 
         // ⚠️ 每次打开都重新取"今天"：游戏挂后台过了零点再回来，
         //    缓存里的旧日期会让今天还停在昨天，整页状态全错。
         this._today = CalendarMath.startOfDay(new Date());
-        this._done = CalendarMath.parseDone(
-            CacheManager.instance.getString(CacheKeys.DailyDone, ""));
-        this.setDayDone(this._today, true);
+
+        // 每日进度**只在打开界面时解析一次**，数据放在 GameDataManager 里，界面不留副本。
+        //
+        // ⚠️ 这里**绝对不能**再顺手把今天标成已完成。原来有一句
+        //    `this.setDayDone(this._today, true)`：玩家只是打开看了一眼日历，
+        //    今天就永久变成"已完成"—— 存档被污染，月度全勤判定也永远差一天。
+        const gd = GameDataManager.instance;
+        gd.LoadDailyProgress();
+
         this._monthIndex = CalendarMath.indexOfDate(this._today);
+
+        // 默认选中今天（需求：第一次进来就选中今天，而不是整页没有选中项）
+        this._selectedKey = CalendarMath.dateKey(this._today);
+        gd.curSelectDate = this._today;
+
         this.render();
         this.bindButtons();
     }
@@ -302,32 +330,17 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     public getCellState(date: Date): DayState
     {
         if (date == null) return DayState.Empty;
+        // onEnable 之前 `_today` 还是 null，直接传进 stateOf 会在 startOfDay 里崩
+        const today = this._today != null ? this._today : CalendarMath.startOfDay(new Date());
         return CalendarMath.stateOf(date.getFullYear(), date.getMonth() + 1, date.getDate(),
-                                    this._today, this._done);
+                                    today, this.dailyDone);
     }
 
     /** 当前显示月份的月度奖杯是否已点亮 */
     public isTrophyLit(): boolean
     {
-        return CalendarMath.monthDone(this.year, this.month, this._today, this._done);
-    }
-
-    /** 标记某天已完成/未完成，会写存档并刷新当前页 */
-    public setDayDone(date: Date, done: boolean): void
-    {
-        if (date == null) return;
-        const key = CalendarMath.dateKey(date);
-        if (done) this._done.add(key);
-        else this._done.delete(key);
-
-        CacheManager.instance.setString(CacheKeys.DailyDone,
-                                        CalendarMath.serializeDone(this._done));
-
-        if (date.getFullYear() === this.year && date.getMonth() + 1 === this.month)
-        {
-            this.renderCells();
-            this.refreshTrophy();
-        }
+        const today = this._today != null ? this._today : CalendarMath.startOfDay(new Date());
+        return CalendarMath.monthDone(this.year, this.month, today, this.dailyDone);
     }
 
     /** 跳到指定月份（超出区间会被夹到边界） */
@@ -336,6 +349,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         const idx = CalendarMath.clampIndex(CalendarMath.monthIndex(year, month));
         if (idx === this._monthIndex) return;
         this._monthIndex = idx;
+        this.syncSelectionToMonth();
         this.render();
     }
 
@@ -345,7 +359,31 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         this._today = CalendarMath.startOfDay(new Date());
         this._monthIndex = CalendarMath.indexOfDate(this._today);
         this._selectedKey = CalendarMath.dateKey(this._today);
+        GameDataManager.instance.curSelectDate = this._today;
         this.render();
+    }
+
+    /**
+     * 翻月之后校正选中项。
+     *
+     * ⚠️ 不校正的话，选中环会跟着上一页的日期一起消失，但 `_selectedKey` /
+     *    `curSelectDate` 还停在**另一个月**那一天 —— 玩家看着 12 月、按「开始挑战」，
+     *    实际开的是 11 月 4 日那局，赢了还会把 11-04 记成已完成。界面上一格都没选中，
+     *    数据却动了，这是最难查的一类问题。
+     *
+     * 所以：选中日不在当前月就清空，让「开始挑战」走"请先选择日期"那条分支。
+     */
+    private syncSelectionToMonth(): void
+    {
+        if (this._selectedKey == null) return;
+
+        const y = this.year;
+        const m = this.month;
+        const prefix = `${y}-${this.pad2(m)}-`;
+        if (this._selectedKey.indexOf(prefix) === 0) return;
+
+        this._selectedKey = null;
+        GameDataManager.instance.curSelectDate = null;
     }
 
     // -----------------------------------------------------------------------
@@ -449,7 +487,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
             return;
         }
 
-        const state = CalendarMath.stateOf(year, month, day, this._today, this._done);
+        const state = CalendarMath.stateOf(year, month, day, this._today, this.dailyDone);
 
         if (plateToday != null) plateToday.active = state === DayState.Ready;
         if (plateDone != null) plateDone.active = state === DayState.Done;
@@ -578,33 +616,41 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         const year = this.year;
         const month = this.month;
         const key = CalendarMath.dayKey(year, month, day);
-        // 再点一次同一个日期 = 取消选中
-        this._selectedKey = this._selectedKey === key ? null : key;
+
+        // 选中是**单选、且必须有一个**：再点同一格不取消。
+        // 取消之后「开始挑战」就没有目标了，而每日玩法本身就是"选一天去打"，
+        // 留一个空选中态只会多出"没选日期怎么办"这个分支。
+        if (this._selectedKey === key) return;
+
+        this._selectedKey = key;
         this.renderCells();
+
         const date = new Date(year, month - 1, day);
         GameDataManager.instance.curSelectDate = date;
-        if (this._selectedKey != null && this.onDaySelected != null)
+        if (this.onDaySelected != null)
         {
-          
-            this.onDaySelected(date, CalendarMath.stateOf(year, month, day, this._today, this._done));
+            this.onDaySelected(date,
+                               CalendarMath.stateOf(year, month, day, this._today, this.dailyDone));
         }
     }
 
     private onClickPrevMonth(): void
     {
         if (this._monthIndex <= CalendarMath.START_INDEX) return;
-        if (SoundManager.instance != null) 
-                SoundManager.instance.playSound(SoundManager.SFX_CLICK);
+        if (SoundManager.instance != null)
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         this._monthIndex--;
+        this.syncSelectionToMonth();
         this.render();
     }
 
     private onClickNextMonth(): void
     {
         if (this._monthIndex >= CalendarMath.END_INDEX) return;
-        if (SoundManager.instance != null) 
+        if (SoundManager.instance != null)
             SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         this._monthIndex++;
+        this.syncSelectionToMonth();
         this.render();
     }
 
@@ -623,12 +669,42 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         if (SoundManager.instance != null) 
             SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         if (this._openingGame) return;
+
+        const gd = GameDataManager.instance;
+        const date = this.getSelectedDate();
+        if (date == null)
+        {
+            UIToast.showToast("请先选择日期");
+            return;
+        }
+
+        // 拦截已完成的日期。需求原话：「如果选中的天数已经玩过了，点击挑战按钮
+        // 要拦截并且提示"已经完成挑战"」。
+        // 不拦的后果不只是重复打：`MarkDailyDone` 是幂等的，打完不会重复记，
+        // 玩家会以为"打了没反应"。
+        const state = gd.GetDailyState(date);
+        if (state === DayState.Done)
+        {
+            UIToast.showToast("已经完成挑战");
+            return;
+        }
+
+        // 未到期也拦。放进去打赢了会往一个**未来**日期写完成记录，
+        // 等那天真到了，格子直接显示"已完成"（stateOf 里 Locked 判在 Done 之前，
+        // 当天之前看不出来，一到那天就穿帮）。
+        if (state === DayState.Locked)
+        {
+            UIToast.showToast("还没到这一天");
+            return;
+        }
+
         this._openingGame = true;
         try
         {
-            await GameDataManager.instance.SetGameMode(BattleMode.Calendar);
+            gd.curSelectDate = date;
+            await gd.SetGameMode(BattleMode.Calendar);
             await UIManager.instance.openWindow(UIGameMainView, UIGameMainView.PrefabPath);
-            GameDataManager.instance.OnResultButton(false);
+            gd.OnResultButton(false);
         }
         finally
         {

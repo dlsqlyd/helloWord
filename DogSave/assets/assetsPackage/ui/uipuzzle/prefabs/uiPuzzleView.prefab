@@ -1679,7 +1679,7 @@
       "__id__": 62
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 64
@@ -2046,7 +2046,7 @@
       "__id__": 78
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 80
@@ -2413,7 +2413,7 @@
       "__id__": 94
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 96
@@ -2780,7 +2780,7 @@
       "__id__": 110
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 112

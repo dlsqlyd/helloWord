@@ -14,7 +14,7 @@ import { SoundManager } from '../Module/Resource/SoundManager';
 import { UIManager } from '../Module/UI/UIManager';
 import { ResultPara, UIGameResultView } from './UI/UIGameMain/UIGameResultView';
 import { PuzzleProgress } from './UI/UIPuzzle/PuzzleProgress';
-import { CalendarMath } from './UI/UICalendar/CalendarMath';
+import { CalendarMath, DailyMarkResult, DayState } from './UI/UICalendar/CalendarMath';
 
 // 坐标转换用的临时矩阵。这两个函数在飞行动画里会逐帧调用，
 // 每次 new Mat4 会白白产生垃圾，所以复用。
@@ -124,11 +124,20 @@ export class GameDataManager implements IManager {
     public async SetGameMode(mode:BattleMode)
     {
         this.gameMode = mode;
+        // 只有日历模式才有"选中日期"这回事。切到别的模式必须清掉，
+        // 否则上一次在日历里选的日期会一直挂着，下次进日历前就被当成"当前挑战日"。
+        if (mode != BattleMode.Calendar)
+            this.curSelectDate = null;
         await this.LoadLevelConfig();
          if (this.gameMode == BattleMode.Calendar || this.gameMode == BattleMode.Puzzle)
         {
-            let num = Math.floor(Math.random() * 100) + 1;
-            this.curFightLevelId = num + 99;
+            // 日历 / 拼图模式从"后半段"里随机抽一关（前 99 关留给主线推进）。
+            // ⚠️ 原来写的是 `num + 99`（num = 1..100）⇒ 上界只到 199，
+            //    关卡表扩到 200 之后第 200 关**永远抽不到**。
+            //    现在按表长算上界，表再扩也不用改这里。
+            const minId = 100;
+            const maxId = Math.max(minId, this.datas.data.length);
+            this.curFightLevelId = minId + Math.floor(Math.random() * (maxId - minId + 1));
         }
         else
             this.curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
@@ -351,14 +360,12 @@ export class GameDataManager implements IManager {
             if (this.gameMode == BattleMode.Puzzle)
                 this.UnlockPuzzlePiece();
             else if (this.gameMode == BattleMode.Calendar && this.curSelectDate != null)
-            {   
-                let _today = this.curSelectDate;
-                let _done = CalendarMath.parseDone(
-                        CacheManager.instance.getString(CacheKeys.DailyDone, ""));
-                const key = CalendarMath.dateKey(_today);
-                _done.add(key);
-                CacheManager.instance.setString(CacheKeys.DailyDone,
-                                        CalendarMath.serializeDone(_done));
+            {
+                // 每日挑战：把选中的那一格记成已完成。
+                // 数据归 GameDataManager 所有（见 MarkDailyDone），界面只负责读来渲染 ——
+                // 原先这里自己 parse 一遍缓存、再写回去，等于同一份数据有两个写入口，
+                // 和界面里的副本互相覆盖。
+                this.MarkDailyDone(this.curSelectDate);
             }
         }
     }
@@ -412,6 +419,92 @@ export class GameDataManager implements IManager {
         const idx: number = this.lastUnlockedPiece;
         this.lastUnlockedPiece = -1;
         return idx;
+    }
+
+    // ---------------------------------------------------------------- 每日挑战
+    //
+    // 每日挑战**没有独立玩法**：点「开始挑战」走的还是普通关卡（见
+    // UICalendarView.onClickStart），所以这里只负责一件事 —— 记住哪几天过了。
+    //
+    // 数据归属：`CacheKeys.DailyDone` 是唯一真值，`_dailyDone` 是它的内存副本。
+    // **只在打开每日玩法界面时解析一次**（`LoadDailyProgress`），之后读写都走这里。
+    //
+    // ⚠️ 别让界面自己 parse 一份。之前就是三份数据（缓存 / 界面副本 / 这里各 parse
+    //    一次）互相覆盖，而且 `UICalendarView.onEnable` 里还有一句
+    //    `setDayDone(today, true)` —— **每打开一次日历就把今天记成已完成**，
+    //    玩家根本没打，格子已经打上对勾，连带月度奖杯全勤判定也是错的。
+
+    /** `2026-11-05` 形式的完成集合。null = 还没解析过 */
+    private _dailyDone: Set<string> = null;
+
+    /**
+     * 从存档解析每日挑战进度。
+     *
+     * 调用点只有一个：`UICalendarView.onEnable()`（打开每日玩法界面时触发）。
+     * 故意不放在 `init()` 里 —— 这份数据只有那个界面用得上，早读只是多一次 IO。
+     */
+    public LoadDailyProgress(): void
+    {
+        this._dailyDone = CalendarMath.parseDone(
+            CacheManager.instance.getString(CacheKeys.DailyDone, ""));
+    }
+
+    /**
+     * 完成集合（返回**内部实例**，只读使用）。
+     *
+     * 不复制是故意的：界面每次渲染要逐格查 42 次，复制一份纯属浪费。
+     * 反过来，外部**不要**往里 add/delete —— 写入请走 `MarkDailyDone`。
+     */
+    public GetDailyDone(): Set<string>
+    {
+        if (this._dailyDone == null) this.LoadDailyProgress();
+        return this._dailyDone;
+    }
+
+    /** 某一天是否已完成 */
+    public IsDailyDone(date: Date): boolean
+    {
+        if (date == null) return false;
+        return this.GetDailyDone().has(CalendarMath.dateKey(date));
+    }
+
+    /**
+     * 某一天的日历状态（Locked / Missed / Ready / Done）。
+     * 「选中」不在这里 —— 它是叠在底板上的环，属于界面。
+     */
+    public GetDailyState(date: Date): DayState
+    {
+        if (date == null) return DayState.Empty;
+        return CalendarMath.stateOf(date.getFullYear(), date.getMonth() + 1, date.getDate(),
+                                    CalendarMath.startOfDay(new Date()),
+                                    this.GetDailyDone());
+    }
+
+    /**
+     * 标记某天已完成并落盘。返回 true = 这次是**新增**（之前没做过）。
+     *
+     * 判据全在 `CalendarMath.markDone()`（纯逻辑，有离线单测）：
+     *   非法日期 / 未来日期 / 已记过 都不写，只有 Added 才落盘。
+     * 幂等：同一天赢两次只写一次缓存。
+     */
+    public MarkDailyDone(date: Date): boolean
+    {
+        if (date == null) return false;
+
+        const done = this.GetDailyDone();
+        const res = CalendarMath.markDone(done,
+                                          date.getFullYear(), date.getMonth() + 1, date.getDate(),
+                                          new Date());
+
+        if (res === DailyMarkResult.Future)
+        {
+            console.warn(`[GameDataManager] 拒绝把未来日期记为已完成: ${CalendarMath.dateKey(date)}`);
+            return false;
+        }
+        if (res !== DailyMarkResult.Added) return false;
+
+        CacheManager.instance.setString(CacheKeys.DailyDone, CalendarMath.serializeDone(done));
+        return true;
     }
 
     /**

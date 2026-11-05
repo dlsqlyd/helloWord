@@ -211,7 +211,7 @@ export class DoorNode extends Component {
         // 这里只同步开合，**不碰 dogIcon 的贴图**：贴图那条是异步的，由
         // CreateWithColor → RfreshDogSprite 负责，两处都去写会打架。
         // 判据见 level_tools/verify_level_loop.py 第 11 项。
-        this.openCarIcon.node.active = this.doorState == DoorState.Open;
-        this.closeCarIcon.node.active = this.doorState != DoorState.Open;
+        this.openCarIcon.node.active = true;
+        this.closeCarIcon.node.active = false;
     }
 }

@@ -27,10 +27,10 @@ export class CacheKeys{
      * 每日挑战里"已经完成"的日期，逗号分隔的 `yyyy-MM-dd`，例如
      * `2026-11-01,2026-11-03`。
      *
-     * ⚠️ 工程里**还没有每日挑战系统**，所以这个 key 目前只会被
-     * `UICalendarView.setDayDone()` 写入（界面内部用，没有别的地方读）。
-     * 真系统接进来时，让它往这里写、或者直接调 `setDayDone()` 都行，界面不用改。
-     * 日历界面读它来决定哪些格子画"浅绿底 + 对勾"。
+     * ⚠️ 写入方**只有一个**：`GameDataManager.MarkDailyDone()`（在 `FinishLevel`
+     * 里，日历模式打赢时调）。读取方是 `GameDataManager.LoadDailyProgress()`
+     * （打开日历界面时解析一次），界面通过 `GetDailyDone()` 拿内存副本渲染。
+     * 别让界面自己读写这个 key —— 之前界面也 parse 一份，两边互相覆盖。
      */
     public static readonly DailyDone = "DailyDone";
 
