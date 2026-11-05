@@ -10,6 +10,7 @@ import { UIGameMainView } from "../UIGameMain/UIGameMainView";
 import { UIToast } from "../UICommon/UIToast";
 import { CalendarMath, DayState } from "./CalendarMath";
 import { BattleMode, GameDataManager } from "../../GameDataManager";
+import { SoundManager } from "../../../Module/Resource/SoundManager";
 
 // ---------------------------------------------------------------------------
 // 日历界面（每日挑战日历）
@@ -592,6 +593,8 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     private onClickPrevMonth(): void
     {
         if (this._monthIndex <= CalendarMath.START_INDEX) return;
+        if (SoundManager.instance != null) 
+                SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         this._monthIndex--;
         this.render();
     }
@@ -599,12 +602,16 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     private onClickNextMonth(): void
     {
         if (this._monthIndex >= CalendarMath.END_INDEX) return;
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         this._monthIndex++;
         this.render();
     }
 
     private onClickBack(): void
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         this.closeSelf();
     }
 
@@ -613,6 +620,8 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         // 工程里没有"每日挑战"这套玩法（没有每日任务表、没有次数、没有奖励），
         // 唯一真能玩的是普通关卡，所以这里打开关卡界面 —— 和门口「开始游戏」一致。
         // ⚠️ 以后真有每日挑战了，这里要换成打开当天挑战，别让它继续走普通关卡。
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         if (this._openingGame) return;
         this._openingGame = true;
         try

@@ -9,6 +9,7 @@ import { CacheKeys } from "../../../Module/Const/CacheKeys";
 import { UIGameMainView } from "../UIGameMain/UIGameMainView";
 import { PuzzleProgress } from "./PuzzleProgress";
 import { BattleMode, GameDataManager } from "../../GameDataManager";
+import { SoundManager } from "../../../Module/Resource/SoundManager";
 
 // ---------------------------------------------------------------------------
 // 拼图活动界面（Puzzle Event）
@@ -368,6 +369,8 @@ export class UIPuzzleView extends UIBaseView implements IOnCreate, IOnEnable<UIP
 
     private onClickBack(): void
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         this.closeSelf();
     }
 
@@ -384,6 +387,8 @@ export class UIPuzzleView extends UIBaseView implements IOnCreate, IOnEnable<UIP
      */
     private async onClickStart(): Promise<void>
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         const now = Date.now();
         if (now - this._lastStartAt < UIPuzzleView.START_DEBOUNCE_MS) return;
         this._lastStartAt = now;

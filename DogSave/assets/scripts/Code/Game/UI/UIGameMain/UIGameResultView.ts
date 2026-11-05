@@ -10,6 +10,7 @@ import { MenuPara } from "../UICommon/UIMenu";
 import { UIManager } from "../../../Module/UI/UIManager";
 import { UIGateView } from "../UIGate/UIGateView";
 import { UIGameMainView } from "./UIGameMainView";
+import { SoundManager } from "../../../Module/Resource/SoundManager";
 
 // ---------------------------------------------------------------------------
 // 结算界面的弹出动画
@@ -308,8 +309,16 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
         if (GameDataManager.instance != null) GameDataManager.instance.OnResultButton(isNext);
     }
 
-    private onClickNext() { this.onResultButton(true); }
-    private onClickReplay() { this.onResultButton(false); }
+    private onClickNext() { 
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
+        this.onResultButton(true); 
+    }
+    private onClickReplay() { 
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
+        this.onResultButton(false); 
+    }
 
     /**
      * 「复活」：**不重开本关**，把同一盘棋继续下去，只补时间。
@@ -330,12 +339,18 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
     }
 
     private async onClickHome() { 
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         await this.closeSelf();
         await UIManager.instance.destroyWindow<UIGameMainView>(UIGameMainView);
         await UIManager.instance.openWindow(UIGateView, UIGateView.PrefabPath);
      }
 
-    private onClickRevive() { this.onRevive(); }
+    private onClickRevive() { 
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
+        this.onRevive(); 
+    }
 
     // -----------------------------------------------------------------------
     // 节点取用

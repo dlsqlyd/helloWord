@@ -210,11 +210,15 @@ export class UISettingView extends UIBaseView implements IOnCreate, IOnEnable, I
 
     private onClickBack()
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         this.closeSelf();
     }
 
     private onClickRow(row: RowView)
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         if (row.def.isToggle)
         {
             const next = !this.readToggle(row.def.id);

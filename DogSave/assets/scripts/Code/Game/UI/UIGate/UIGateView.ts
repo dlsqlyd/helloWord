@@ -13,6 +13,7 @@ import { UIGameMainView } from "../UIGameMain/UIGameMainView";
 import { UIPuzzlePara, UIPuzzleView } from "../UIPuzzle/UIPuzzleView";
 import { PuzzleProgress } from "../UIPuzzle/PuzzleProgress";
 import { UIToast } from "../UICommon/UIToast";
+import { SoundManager } from "../../../Module/Resource/SoundManager";
 
 // ---------------------------------------------------------------------------
 // 大门界面（Home / Gate）
@@ -212,18 +213,24 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
 
     private onClickGear(): void
     {
+        if (SoundManager.instance != null) 
+                    SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // 设置界面是**弹窗**，会叠在大门上面；关掉它就回到大门，不用管这里
         UIManager.instance.openWindow(UISettingView, UISettingView.PrefabPath);
     }
 
     private onClickShop(): void
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // 工程里没有商店，也没有钱包 —— 别让按钮点了没反应
         UIToast.showToast("商店还没做");
     }
 
     private onClickDaily(): void
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // 每日挑战**日历**已经做好了（UICalendarView），所以这里真的打开它。
         // 但"每日挑战"这套**玩法**仍然不存在：没有每日任务表、没有次数、没有领奖，
         // 日历里点「开始今日挑战」走的是普通关卡。
@@ -234,6 +241,8 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
 
     private onClickPuzzle(): void
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // 真打开拼图界面。刚解锁的那片带过去弹一下 —— ConsumeLastUnlockedPiece()
         // 会顺手把提示位清掉，所以同一片只高亮一次（来回开关不会一直闪）。
         const para = new UIPuzzlePara();
@@ -245,6 +254,8 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
 
     private async onClickPlay(): Promise<void>
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         if (this._openingGame) return;
         this._openingGame = true;
         try

@@ -162,6 +162,8 @@ export class GameMainObj extends Component {
 
     private async onClickEvent(button: Button){
         console.log('onClickEvent setting');
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // await UIManager.instance.openBox(UIGameResultView,UIGameResultView.PrefabPath);
         GameDataManager.instance.FinishLevel(false);
     }
