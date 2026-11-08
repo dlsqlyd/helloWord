@@ -9,6 +9,10 @@ import { CacheManager } from "../../../Module/Player/CacheManager";
 import { CacheKeys } from "../../../Module/Const/CacheKeys";
 import { Log } from "../../../../Mono/Module/Log/Log";
 import { UIToast } from "../UICommon/UIToast";
+import { LangType } from "../../../Module/Const/LangType";
+import { I18NKey } from "../../../Module/Const/I18NKey";
+import { I18NManager } from "../../../Module/I18N/I18NManager";
+import { I18nLabelBinder } from "../../../Module/I18N/I18nLabelBinder";
 
 // ---------------------------------------------------------------------------
 // 设置界面
@@ -95,6 +99,9 @@ export class UISettingView extends UIBaseView implements IOnCreate, IOnEnable, I
     private _backButton: Button = null;
     private _rows: RowView[] = null;
 
+    /** 标题 + 9 行文字的静态文案绑定（预制体是 gen_prefab.py 生成的，不能塞 I18NText 组件） */
+    private _i18n: I18nLabelBinder = null;
+
     public getConstructor()
     {
         return UISettingView;
@@ -110,6 +117,21 @@ export class UISettingView extends UIBaseView implements IOnCreate, IOnEnable, I
 
         this._rows = this.resolveRows();
 
+        // 行文字是左对齐、锚点在左边（x=0），所以加宽只往右长，不会把文字推离图标。
+        // 540 = 从文字左边缘到右侧箭头左边缘的可用宽度（行宽 926，图标右边缘 -260，箭头左边缘 341）。
+        this._i18n = new I18nLabelBinder(this.node, [
+            { path: "panel/title/Text",                        key: I18NKey.Setting_Title },
+            { path: "panel/panel_music/row_music/Text",        key: I18NKey.Setting_Music,    maxWidth: 540 },
+            { path: "panel/panel_music/row_sound/Text",        key: I18NKey.Setting_Sound,    maxWidth: 540 },
+            { path: "panel/panel_music/row_vibrate/Text",      key: I18NKey.Setting_Vibrate,  maxWidth: 540 },
+            { path: "panel/panel_music/row_hint/Text",         key: I18NKey.Setting_Hint,     maxWidth: 540 },
+            { path: "panel/panel_system/row_lang/Text",        key: I18NKey.Setting_Language, maxWidth: 540 },
+            { path: "panel/panel_system/row_save/Text",        key: I18NKey.Setting_Save,     maxWidth: 540 },
+            { path: "panel/panel_system/row_contact/Text",     key: I18NKey.Setting_Contact,  maxWidth: 540 },
+            { path: "panel/panel_legal/row_privacy/Text",      key: I18NKey.Setting_Privacy,  maxWidth: 540 },
+            { path: "panel/panel_legal/row_terms/Text",        key: I18NKey.Setting_Terms,    maxWidth: 540 },
+        ]);
+
         // 赶在第一次渲染之前把起始姿态摆好，见文件头的时序约束
         this._pop.applyStartPose();
     }
@@ -119,6 +141,7 @@ export class UISettingView extends UIBaseView implements IOnCreate, IOnEnable, I
         this._closing = false;
 
         // 先把开关摆到存档里的状态，再播动画 —— 反过来的话会先看到全"开"再跳回去
+        this._i18n?.enable();
         this.refreshAll();
 
         this.bindButtons();
@@ -129,6 +152,7 @@ export class UISettingView extends UIBaseView implements IOnCreate, IOnEnable, I
     {
         this._pop.stop();
         this.unbindButtons();
+        this._i18n?.disable();
         this._pop.resetPose();
     }
 
@@ -227,11 +251,36 @@ export class UISettingView extends UIBaseView implements IOnCreate, IOnEnable, I
             return;
         }
 
-        // 语言 / 保存进度 / 联系我们 / 隐私政策 / 服务条款 —— 工程里**都还没有**对应界面。
-        // 这里只给一个看得见的反馈，不假装已经接上；等二级页做出来，把这里换成
-        // `UIManager.instance.openWindow(...)` 即可，界面本身不用动。
+        // 语言行是真的能用：点一下在中/英之间切。其余四项（保存进度 / 联系我们 /
+        // 隐私政策 / 服务条款）工程里**都还没有**对应界面，只给一个看得见的反馈，
+        // 不假装已经接上；等二级页做出来，把这里换成 `UIManager.instance.openWindow(...)` 即可。
+        if (row.def.id === "lang")
+        {
+            this.toggleLanguage();
+            return;
+        }
+
         Log.warning("[UISettingView] 行 " + row.def.id + " 还没有对应界面");
-        UIToast.showToast("敬请期待");
+        UIToast.showToast(I18NManager.instance.t(I18NKey.Setting_Toast_ComingSoon));
+    }
+
+    /**
+     * 中/英互切。
+     *
+     * ⚠️ 切完不用手动刷这 10 个 Label —— `I18nLabelBinder` 订阅了语言变更事件，
+     *    `switchLanguage` 会在文案表加载完成后广播，绑定的 Label 自己会重设。
+     *    这里只负责弹提示（提示本身要用**切换后**的语言）。
+     */
+    private async toggleLanguage(): Promise<void>
+    {
+        const mgr = I18NManager.instance;
+        if (mgr == null) return;
+
+        const next = mgr.otherLangType;
+        await mgr.switchLanguage(next);
+
+        const langName = next === LangType.Chinese ? "中文" : "English";
+        UIToast.showToast(mgr.tf(I18NKey.Setting_Lang_Switched, langName));
     }
 
     // -----------------------------------------------------------------------

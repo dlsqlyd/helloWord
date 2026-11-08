@@ -9,6 +9,9 @@ import { UIToast } from "../UICommon/UIToast";
 import { CalendarMath, DayState } from "./CalendarMath";
 import { BattleMode, GameDataManager } from "../../GameDataManager";
 import { SoundManager } from "../../../Module/Resource/SoundManager";
+import { I18NKey } from "../../../Module/Const/I18NKey";
+import { I18NManager } from "../../../Module/I18N/I18NManager";
+import { I18nLabelBinder } from "../../../Module/I18N/I18nLabelBinder";
 
 // ---------------------------------------------------------------------------
 // 日历界面（每日挑战日历）
@@ -139,6 +142,9 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     private _btnBack: Button = null;
     private _btnStart: Button = null;
 
+    /** 星期表头 7 个 Label 的静态文案绑定（预制体由 gen_prefab.py 生成，不能塞组件） */
+    private _i18n: I18nLabelBinder = null;
+
     private _cellNodes: Node[] = null;          // 42
     private _cellButtons: Button[] = null;      // 42
     private _cellNumerals: Label[] = null;      // 42
@@ -261,6 +267,17 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
             () => this.onClickBack(),
             () => this.onClickStart(),
         ];
+
+        // 星期表头：中文「日一二三四五六」/ 英文单字母 S M T W T F S
+        this._i18n = new I18nLabelBinder(this.node, [
+            { path: "content/panel/week/chip_0/Text", key: I18NKey.Calendar_Week_Sun },
+            { path: "content/panel/week/chip_1/Text", key: I18NKey.Calendar_Week_Mon },
+            { path: "content/panel/week/chip_2/Text", key: I18NKey.Calendar_Week_Tue },
+            { path: "content/panel/week/chip_3/Text", key: I18NKey.Calendar_Week_Wed },
+            { path: "content/panel/week/chip_4/Text", key: I18NKey.Calendar_Week_Thu },
+            { path: "content/panel/week/chip_5/Text", key: I18NKey.Calendar_Week_Fri },
+            { path: "content/panel/week/chip_6/Text", key: I18NKey.Calendar_Week_Sat },
+        ], () => this.render());
     }
 
     public onEnable()
@@ -285,6 +302,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         this._selectedKey = CalendarMath.dateKey(this._today);
         gd.curSelectDate = this._today;
 
+        this._i18n?.enable();
         this.render();
         this.bindButtons();
     }
@@ -292,6 +310,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     public onDisable()
     {
         this.unbindButtons();
+        this._i18n?.disable();
         this._openingGame = false;
     }
 
@@ -395,7 +414,14 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         const year = this.year;
         const month = this.month;
 
-        if (this._monthLabel != null) this._monthLabel.string = `${year}年${month}月`;
+        // 中文 "2026年11月"，英文 "11/2026" —— 月份牌宽度是按中文设计的，
+        // 英文反而更短，不会溢出。
+        if (this._monthLabel != null)
+        {
+            this._monthLabel.string = I18NManager.instance != null
+                ? I18NManager.instance.tf(I18NKey.Calendar_Month_Format, year, month)
+                : `${year}年${month}月`;
+        }
 
         this._gridDays = CalendarMath.buildMonth(year, month);
         this.applyGridLayout(CalendarMath.usedRows(year, month));
@@ -674,7 +700,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         const date = this.getSelectedDate();
         if (date == null)
         {
-            UIToast.showToast("请先选择日期");
+            UIToast.showToast(I18NManager.instance.t(I18NKey.Calendar_Toast_Select));
             return;
         }
 
@@ -685,7 +711,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         const state = gd.GetDailyState(date);
         if (state === DayState.Done)
         {
-            UIToast.showToast("已经完成挑战");
+            UIToast.showToast(I18NManager.instance.t(I18NKey.Calendar_Toast_Done));
             return;
         }
 
@@ -694,7 +720,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
         // 当天之前看不出来，一到那天就穿帮）。
         if (state === DayState.Locked)
         {
-            UIToast.showToast("还没到这一天");
+            UIToast.showToast(I18NManager.instance.t(I18NKey.Calendar_Toast_Future));
             return;
         }
 

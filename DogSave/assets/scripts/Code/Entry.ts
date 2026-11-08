@@ -48,6 +48,11 @@ export class Entry
             ManagerProvider.registerManager(I18NManager);
             ManagerProvider.registerManager(UIManager);
 
+            // 先把文案表等到位再开界面。
+            // ⚠️ `I18NManager.init()` 里的 `initAsync()` 是不 await 的（要异步加载 config bundle），
+            //    不等的话第一个界面（以及热更新弹窗）会把 key 名当文本显示出来。
+            await I18NManager.instance.Ready;
+
             if (sys.isNative && (Define.Networked||Define.ForceUpdate)) {
                 await cm.loadAsync();
                 ManagerProvider.registerManager(ServerConfigManager);

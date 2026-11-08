@@ -11,6 +11,8 @@ import { UIManager } from "../../../Module/UI/UIManager";
 import { UIGateView } from "../UIGate/UIGateView";
 import { UIGameMainView } from "./UIGameMainView";
 import { SoundManager } from "../../../Module/Resource/SoundManager";
+import { I18NKey } from "../../../Module/Const/I18NKey";
+import { I18NManager } from "../../../Module/I18N/I18NManager";
 
 // ---------------------------------------------------------------------------
 // 结算界面的弹出动画
@@ -486,7 +488,9 @@ export class UIGameResultView extends UIBaseView implements IOnCreate, IOnEnable
 
         const label = this.titleLabel();
         label.node.parent.active = GameDataManager.instance.gameMode == BattleMode.Main
-        label.string = `第${GameDataManager.instance.curFightLevelId}关`;
+        label.string = I18NManager.instance != null
+            ? I18NManager.instance.tf(I18NKey.Game_Level_Format, GameDataManager.instance.curFightLevelId)
+            : `第${GameDataManager.instance.curFightLevelId}关`;
         // this._defaultTitle = label != null ? label.string : "";
     }
 

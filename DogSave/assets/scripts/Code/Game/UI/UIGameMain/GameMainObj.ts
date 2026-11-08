@@ -1,4 +1,4 @@
-import { _decorator, Button, Component, find, Label, Node, Vec3 } from 'cc';
+import { _decorator, Button, Component, find, Label, Node, UITransform, Vec3 } from 'cc';
 import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
 import { BattleMode, GameDataManager, LevelConfig, LevelState } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
@@ -9,6 +9,8 @@ import { SoundManager } from '../../../Module/Resource/SoundManager';
 import { load } from '../../../../../../extensions/taowu-editor/source/main';
 import { UIManager } from '../../../Module/UI/UIManager';
 import { UIGameResultView } from './UIGameResultView';
+import { I18NKey } from '../../../Module/Const/I18NKey';
+import { I18NManager } from '../../../Module/I18N/I18NManager';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameMainObj')
@@ -46,12 +48,17 @@ export class GameMainObj extends Component {
 
     start() {
         GameDataManager.instance.gameMainObj = this;
+        const i18n = I18NManager.instance;
         if (GameDataManager.instance.gameMode == BattleMode.Main)
-            this.levelText.string = `第${GameDataManager.instance.curFightLevelId}关`;
+            this.levelText.string = i18n != null
+                ? i18n.tf(I18NKey.Game_Level_Format, GameDataManager.instance.curFightLevelId)
+                : `第${GameDataManager.instance.curFightLevelId}关`;
         else if (GameDataManager.instance.gameMode == BattleMode.Calendar)
-            this.levelText.string = "每日挑战"
+            this.levelText.string = i18n != null ? i18n.t(I18NKey.Game_Mode_Daily) : "每日挑战";
         else if (GameDataManager.instance.gameMode == BattleMode.Puzzle)
-            this.levelText.string = "拼图挑战"
+            this.levelText.string = i18n != null ? i18n.t(I18NKey.Game_Mode_Puzzle) : "拼图挑战";
+
+        this.refreshTips();
         let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
         for (let i = 0; i < this.chairNodes.length; i++)
         {
@@ -280,8 +287,44 @@ export class GameMainObj extends Component {
     public RefreshTimeText()
     {
         if (this.timeText == null) return;
-        this.timeText.string = `${GameDataManager.instance.GetRemainSeconds()}秒`;
+        const secs = GameDataManager.instance.GetRemainSeconds();
+        const i18n = I18NManager.instance;
+        this.timeText.string = i18n != null
+            ? i18n.tf(I18NKey.Game_Time_Format, secs)
+            : `${secs}秒`;
     }
+
+    /**
+     * 关卡底部的操作提示（`bg/bottomNode/tips/Label`）。
+     *
+     * 这句是**静态文案**，但预制体里没有挂 I18NText（预制体由资源包拆出来，没手改过），
+     * 所以在这里按路径找一次、按当前语言写一次。start() 每关都会被重调，
+     * 顺手也就把"中途切语言"的情况补上了。
+     */
+    public refreshTips(): void
+    {
+        if (this._tipsLabel == null)
+        {
+            const node = this.node != null ? this.node.getChildByPath("bg/bottomNode/tips/Label") : null;
+            this._tipsLabel = node != null ? node.getComponent(Label) : null;
+
+            // 中文那句话是 15 个字、框宽 508；英文同样意思要长得多 ⇒ 放开到 820 并允许缩字
+            if (this._tipsLabel != null)
+            {
+                const ut = this._tipsLabel.node.getComponent(UITransform);
+                if (ut != null) ut.width = 820;
+                this._tipsLabel.overflow = Label.Overflow.SHRINK;
+            }
+        }
+        if (this._tipsLabel == null) return;
+
+        const i18n = I18NManager.instance;
+        if (i18n == null) return;
+        const text = i18n.t(I18NKey.Game_Tips_Match);
+        if (text != null && text !== String(I18NKey.Game_Tips_Match)) this._tipsLabel.string = text;
+    }
+
+    private _tipsLabel: Label = null;
 
     PlayHoverUpByRoomId(roomId:number) 
     {
@@ -590,6 +633,7 @@ export class GameMainObj extends Component {
             chairNode.node.active = false;
             let doorColor:DogColor = this.GetRandomDoorColor();
             toDoor.CreateWithColor(doorColor);
+            GameDataManager.instance.isCanClick = true;
         }, 1);
         this.scheduleOnce(() => {
             GameDataManager.instance.isCanClick = true;

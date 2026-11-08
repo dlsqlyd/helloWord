@@ -9,6 +9,8 @@ import { ServerConfigManager } from "../ServerConfigManager";
 import { Define } from "../../../../Mono/Define";
 import { PlatformUtils } from "../../../../Mono/Helper/PlatformUtils";
 import { HttpManager } from "../../../../Mono/Module/Http/HttpManager";
+import { I18NKey } from "../../Const/I18NKey";
+import { I18NManager } from "../../I18N/I18NManager";
 
 export class BundleUpdateProcess extends UpdateProcess {
     private remoteManifest: RawVersionManifest;
@@ -99,8 +101,11 @@ export class BundleUpdateProcess extends UpdateProcess {
 
         if (this.cacheDownload) {
             // 提示用户下载
-            const content = `发现 ${bundlesToDownload.length} 个资源包需要更新，是否立即下载？`;
-            const confirmed = await task.showMsgBoxView(content, "确认", this.forceUpdate ? "退出" : "跳过");
+            const content = I18NManager.instance.tf(I18NKey.Update_BundleAsk, bundlesToDownload.length);
+            const confirmed = await task.showMsgBoxView(
+                content,
+                I18NManager.instance.t(I18NKey.Update_Confirm),
+                this.forceUpdate ? I18NManager.instance.t(I18NKey.Update_Exit) : I18NManager.instance.t(I18NKey.Update_Skip));
             if (!confirmed) {
                 if (this.forceUpdate) {
                     return UpdateRes.Quit;
@@ -141,7 +146,10 @@ export class BundleUpdateProcess extends UpdateProcess {
      * 提示用户重试或跳过/退出
      */
     private async updateFail(task: UpdateTask): Promise<UpdateRes> {
-        const btnState = await task.showMsgBoxView("更新失败，请检查网络后重试", "重试", this.forceUpdate ? "退出" : "跳过");
+        const btnState = await task.showMsgBoxView(
+            I18NManager.instance.t(I18NKey.Update_Fail),
+            I18NManager.instance.t(I18NKey.Update_ReTry),
+            this.forceUpdate ? I18NManager.instance.t(I18NKey.Update_Exit) : I18NManager.instance.t(I18NKey.Update_Skip));
         if (btnState) {
             // 用户选择重试 → 重新执行 process
             return await this.process(task);

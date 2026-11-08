@@ -6,6 +6,8 @@ import { AdsBridgeDev } from './AdsBridgeDev';
 import { AdsBridgeNative } from './AdsBridgeNative';
 import { AdsBridgeWechat } from './AdsBridgeWechat';
 import { AdsErrorKind, AdsStatus, IAdsBridge, IAdsShowObserver } from './IAdsBridge';
+import { I18NKey } from '../../Module/Const/I18NKey';
+import { I18NManager } from '../../Module/I18N/I18NManager';
 
 /**
  * 「广告关了但一直没等到 onEarnedReward」的兜底时间。
@@ -68,11 +70,23 @@ const REWARD_FALLBACK_TIMEOUT_MS = 30 * 1000;
 export class AdsManager implements IManager
 {
     // 提示文案。⚠️ 原码从 `ConfigCenter.GetGlobalString(...)` 取（走 I18N），
-    //    DogSave 的 `I18NKey` 表里还没有广告相关的键，先写成明文常量；
-    //    要上多语言的话把这三条挪进 `Code/Module/Const/I18NKey.ts` 再改成传 key。
-    private static readonly TIP_NOT_READY: string = "广告还没准备好，请稍候再试";
-    private static readonly TIP_NO_FILL: string = "无合适的广告";
-    private static readonly TIP_PLAY_FAILED: string = "播放广告失败，请稍候再试";
+    //    这里改成走 I18NManager 的文案表（key 见 I18NKey.Ads_*）。
+    //    用 getter 而不是常量：语言可以在设置里中途切，常量会一直停在启动时那套。
+    private static get TIP_NOT_READY(): string
+    {
+        const mgr = I18NManager.instance;
+        return mgr != null ? mgr.t(I18NKey.Ads_NotReady) : "广告还没准备好，请稍候再试";
+    }
+    private static get TIP_NO_FILL(): string
+    {
+        const mgr = I18NManager.instance;
+        return mgr != null ? mgr.t(I18NKey.Ads_NoFill) : "无合适的广告";
+    }
+    private static get TIP_PLAY_FAILED(): string
+    {
+        const mgr = I18NManager.instance;
+        return mgr != null ? mgr.t(I18NKey.Ads_PlayFail) : "播放广告失败，请稍候再试";
+    }
 
     private static _instance: AdsManager;
 
@@ -319,7 +333,8 @@ export class AdsManager implements IManager
             }
             else
             {
-                this._toast(`${AdsManager.TIP_PLAY_FAILED} 错误码: ${rawCode}`);
+                // 错误码是给排查用的，不翻译；文案本身按当前语言
+                this._toast(`${AdsManager.TIP_PLAY_FAILED} (${rawCode})`);
             }
             Log.debug(`[Ads] ${unitId} 加载失败 kind=${kind} rawCode=${rawCode}`);
         });

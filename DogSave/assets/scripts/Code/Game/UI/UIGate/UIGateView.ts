@@ -12,6 +12,9 @@ import { UICalendarView } from "../UICalendar/UICalendarView";
 import { UIGameMainView } from "../UIGameMain/UIGameMainView";
 import { UIPuzzlePara, UIPuzzleView } from "../UIPuzzle/UIPuzzleView";
 import { PuzzleProgress } from "../UIPuzzle/PuzzleProgress";
+import { I18NKey } from "../../../Module/Const/I18NKey";
+import { I18NManager } from "../../../Module/I18N/I18NManager";
+import { I18nLabelBinder } from "../../../Module/I18N/I18nLabelBinder";
 import { UIToast } from "../UICommon/UIToast";
 import { SoundManager } from "../../../Module/Resource/SoundManager";
 
@@ -76,6 +79,13 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
     private _levelLabel: Label = null;
     private _progressLabel: Label = null;
 
+    /**
+     * 静态文案（卡片标题 / 按钮字）走这里绑定。
+     * 预制体是 `uigate_src/gen_prefab.py` 生成的，不能往里塞 I18NText 组件（会被重跑冲掉），
+     * 所以改成按路径绑。
+     */
+    private _i18n: I18nLabelBinder = null;
+
     private _progress: GateProgress = new GateProgress();
 
     /** `setPuzzleProgress()` 被调过之后置 true：refreshProgress() 就不再从缓存覆盖 */
@@ -99,6 +109,16 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
         this._levelLabel = this.findLabel(UIGateView.PATH_LEVEL);
         this._progressLabel = this.findLabel(UIGateView.PATH_PROGRESS);
 
+        // maxWidth 是按卡片/胶囊的可用宽度给的（英文比中文宽 1.5~2 倍，见 I18nTextBinding 注释）
+        this._i18n = new I18nLabelBinder(this.node, [
+            { path: "content/card_daily/Text",              key: I18NKey.Gate_Card_Daily,   maxWidth: 420 },
+            { path: "content/card_daily/pill_today/Text",   key: I18NKey.Gate_Pill_Today,   maxWidth: 250 },
+            { path: "content/card_daily/btn_start/Text",    key: I18NKey.Gate_Btn_Start,    maxWidth: 330 },
+            { path: "content/card_puzzle/Text",             key: I18NKey.Gate_Card_Puzzle,  maxWidth: 420 },
+            { path: "content/card_puzzle/btn_join/Text",    key: I18NKey.Gate_Btn_Join,     maxWidth: 330 },
+            { path: "content/btn_play/Text",                key: I18NKey.Gate_Btn_Play },
+        ]);
+
         this._buttons = [
             this.findButton(UIGateView.PATH_BTN_GEAR),
             this.findButton(UIGateView.PATH_BTN_PLUS),
@@ -120,6 +140,7 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
         this._openingGame = false;
 
         // 先刷数据再挂按钮：反过来的话，刷新期间玩家点一下会读到上一关的关卡号
+        this._i18n?.enable();
         this.refreshLevel();
         this.refreshCoin();
         this.refreshProgress();
@@ -130,6 +151,7 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
     public onDisable()
     {
         this.unbindButtons();
+        this._i18n?.disable();
         this._openingGame = false;
     }
 
@@ -147,12 +169,14 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
         this._coinLabel.string = `${CacheManager.instance.getInt(CacheKeys.Coin, 0)}`;
     }
 
-    /** 关卡号。格式和 GameMainObj 里的一致：`第N关` */
+    /** 关卡号。格式和 GameMainObj 里的一致：`第N关` / `Level N` */
     public refreshLevel(): void
     {
         if (this._levelLabel == null) return;
         let curFightLevelId = CacheManager.instance.getInt("FightLevelId", 1);
-        this._levelLabel.string = `第${curFightLevelId}关`;
+        this._levelLabel.string = I18NManager.instance != null
+            ? I18NManager.instance.tf(I18NKey.Game_Level_Format, curFightLevelId)
+            : `第${curFightLevelId}关`;
     }
 
     /**
@@ -224,7 +248,7 @@ export class UIGateView extends UIBaseView implements IOnCreate, IOnEnable, IOnD
         if (SoundManager.instance != null) 
             SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // 工程里没有商店，也没有钱包 —— 别让按钮点了没反应
-        UIToast.showToast("商店还没做");
+        UIToast.showToast(I18NManager.instance.t(I18NKey.Gate_Toast_Shop));
     }
 
     private onClickDaily(): void

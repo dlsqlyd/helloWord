@@ -15,6 +15,8 @@ import { UIManager } from '../Module/UI/UIManager';
 import { ResultPara, UIGameResultView } from './UI/UIGameMain/UIGameResultView';
 import { PuzzleProgress } from './UI/UIPuzzle/PuzzleProgress';
 import { CalendarMath, DailyMarkResult, DayState } from './UI/UICalendar/CalendarMath';
+import { I18NKey } from '../Module/Const/I18NKey';
+import { I18NManager } from '../Module/I18N/I18NManager';
 
 // 坐标转换用的临时矩阵。这两个函数在飞行动画里会逐帧调用，
 // 每次 new Mat4 会白白产生垃圾，所以复用。
@@ -557,7 +559,9 @@ export class GameDataManager implements IManager {
         //    **之外**、两种结果共用 —— 也就是说失败时它照样显示「恭喜过关」。
         //    预制体里没有失败版文案，所以失败标题必须由这里传。
         //    「挑战失败」是占位文案，正式文案定了改这一行即可。
-        para.title = isWin ? "恭喜过关" : "挑战失败";
+        para.title = I18NManager.instance != null
+            ? I18NManager.instance.t(isWin ? I18NKey.Result_Title_Win : I18NKey.Result_Title_Fail)
+            : (isWin ? "恭喜过关" : "挑战失败");
         await UIManager.instance.openBox<UIGameResultView, ResultPara>(UIGameResultView, UIGameResultView.PrefabPath, para);
     }
 

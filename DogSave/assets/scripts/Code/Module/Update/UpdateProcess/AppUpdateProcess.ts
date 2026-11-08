@@ -5,6 +5,8 @@ import { UpdateTask } from "../UpdateTask";
 import { Log } from "../../../../Mono/Module/Log/Log";
 import { ServerConfigManager } from "../ServerConfigManager";
 import { CacheManager } from "../../Player/CacheManager";
+import { I18NKey } from "../../Const/I18NKey";
+import { I18NManager } from "../../I18N/I18NManager";
 
 export class AppUpdateProcess extends UpdateProcess {
     public async process(task: UpdateTask): Promise<UpdateRes> {
@@ -56,9 +58,13 @@ export class AppUpdateProcess extends UpdateProcess {
             return UpdateRes.Over;
         }
 
-        const cancelBtnText = forceUpdate ? "退出" : "进入游戏";
-        const contentUpdate = forceUpdate ? "需要重新下载" : "有新版本可下载";
-        const btnState = await task.showMsgBoxView(contentUpdate, "确认", cancelBtnText);
+        const cancelBtnText = forceUpdate
+            ? I18NManager.instance.t(I18NKey.Update_Exit)
+            : I18NManager.instance.t(I18NKey.Update_EnterGame);
+        const contentUpdate = forceUpdate
+            ? I18NManager.instance.t(I18NKey.Update_NeedRedownload)
+            : I18NManager.instance.t(I18NKey.Update_NewVersion);
+        const btnState = await task.showMsgBoxView(contentUpdate, I18NManager.instance.t(I18NKey.Update_Confirm), cancelBtnText);
         // 暂时直接跳过
         Log.info(`[HotUpdate] App update available: ${appVer} → ${version}, url: ${appURL}, force: ${forceUpdate}`);
 
