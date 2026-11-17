@@ -598,8 +598,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 248,
-      "height": 160.68
+      "width": 156,
+      "height": 102.72
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -637,10 +637,10 @@
     "_string": "设置",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 118,
-    "_fontSize": 118,
+    "_actualFontSize": 72,
+    "_fontSize": 72,
     "_fontFamily": "Arial",
-    "_lineHeight": 118,
+    "_lineHeight": 72,
     "_overflow": 0,
     "_enableWrapText": true,
     "_font": null,
@@ -707,7 +707,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 360,
+      "width": 430,
       "height": 150
     },
     "_anchorPoint": {
