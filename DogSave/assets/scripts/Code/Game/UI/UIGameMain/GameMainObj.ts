@@ -31,6 +31,10 @@ export class GameMainObj extends Component {
     
     @property(Button)
     public settingBtn: Button;
+    @property(Button)
+    public resetBtn: Button;
+    @property(Button)
+    public addtimeBtn: Button;
 
     @property(ChairNode)
     public chairNodes:ChairNode[] = [];
@@ -141,6 +145,12 @@ export class GameMainObj extends Component {
         this.settingBtn.node.off(Button.EventType.CLICK, this.onClickEvent, this);
         this.settingBtn.node.on(Button.EventType.CLICK, this.onClickEvent, this);
 
+        this.resetBtn.node.off(Button.EventType.CLICK, this.onResetEvent, this);
+        this.resetBtn.node.on(Button.EventType.CLICK, this.onResetEvent, this);
+
+        this.addtimeBtn.node.off(Button.EventType.CLICK, this.onAddTimeClickEvent, this);
+        this.addtimeBtn.node.on(Button.EventType.CLICK, this.onAddTimeClickEvent, this);
+
         // timeText 的 @property 绑定是新增的（预制体里的 "timeText" 字段）。
         // 兜底：万一编辑器没把这条绑定读进来（或有人在编辑器里解绑了），按路径再找一次。
         // 路径取自预制体的实际结构 bg/TopNode/timeBg/time_txt，名字唯一，
@@ -174,6 +184,22 @@ export class GameMainObj extends Component {
         // await UIManager.instance.openBox(UIGameResultView,UIGameResultView.PrefabPath);
         GameDataManager.instance.FinishLevel(false);
     }
+
+    private onResetClickEvent(button: Button){
+        console.log('onClickEvent setting');
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
+        //todo 实现当前关卡的狗狗打乱重排一下 并且需要实现交换动画，建议先改数据，再做动画
+    }
+    
+
+    private  onAddTimeClickEvent(button: Button){
+        console.log('onClickEvent setting');
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
+        //todo 实现当前关卡的时间增加 一次增加20s 也需要有动画表现，时间放大然后摇晃然后还原大小
+    }
+    
 
     /**
      * **随机**挑一个颜色，给一扇 Idle 的门当"它在等的颜色"。

@@ -159,7 +159,7 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     private _selTrans: UITransform[] = null;
 
     /** [月份 0..11][0=unlit, 1=lit] */
-    private _trophyNodes: Node[][] = null;
+    // private _trophyNodes: Node[][] = null;
 
     // ---- 监听（onDisable 要用同一份引用摘掉，所以存起来而不是现场 new）----
     private _cellHandlers: (() => void)[] = null;
@@ -249,15 +249,15 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
             this._gridDays[i] = null;
         }
 
-        this._trophyNodes = [];
-        const trophyRoot = this.findNode(UICalendarView.PATH_TROPHY);
-        for (let m = 1; m <= 12; m++)
-        {
-            const pair: Node[] = [];
-            pair.push(this.findChild(trophyRoot, `m${this.pad2(m)}_unlit`));
-            pair.push(this.findChild(trophyRoot, `m${this.pad2(m)}_lit`));
-            this._trophyNodes.push(pair);
-        }
+        // this._trophyNodes = [];
+        // const trophyRoot = this.findNode(UICalendarView.PATH_TROPHY);
+        // for (let m = 1; m <= 12; m++)
+        // {
+        //     const pair: Node[] = [];
+        //     pair.push(this.findChild(trophyRoot, `m${this.pad2(m)}_unlit`));
+        //     pair.push(this.findChild(trophyRoot, `m${this.pad2(m)}_lit`));
+        //     this._trophyNodes.push(pair);
+        // }
 
         this._arrowHandlers = [
             () => this.onClickPrevMonth(),
@@ -551,24 +551,24 @@ export class UICalendarView extends UIBaseView implements IOnCreate, IOnEnable, 
     /** 24 个奖杯节点里只点亮当前月、对应状态的那一个 */
     private refreshTrophy(): void
     {
-        if (this._trophyNodes == null) return;
+        // if (this._trophyNodes == null) return;
 
-        const month = this.month;                    // 1..12
-        const lit = this.isTrophyLit();
-        const want = lit ? 1 : 0;
+        // const month = this.month;                    // 1..12
+        // const lit = this.isTrophyLit();
+        // const want = lit ? 1 : 0;
 
-        for (let m = 0; m < 12; m++)
-        {
-            const pair = this._trophyNodes[m];
-            if (pair == null) continue;
-            const isThis = (m + 1) === month;
-            for (let s = 0; s < 2; s++)
-            {
-                const n = pair[s];
-                if (n == null) continue;
-                n.active = isThis && s === want;
-            }
-        }
+        // for (let m = 0; m < 12; m++)
+        // {
+        //     const pair = this._trophyNodes[m];
+        //     if (pair == null) continue;
+        //     const isThis = (m + 1) === month;
+        //     for (let s = 0; s < 2; s++)
+        //     {
+        //         const n = pair[s];
+        //         if (n == null) continue;
+        //         n.active = isThis && s === want;
+        //     }
+        // }
     }
 
     private refreshArrows(): void
