@@ -577,6 +577,72 @@ export class DogNode extends Component {
     }
 
 
+    /**
+     * 重排（洗牌）用的换色动画：缩小并歪一下 → **在缩到最小的那一帧换色** → 弹回原位。
+     *
+     * 为什么换色要卡在缩放最小处：重排时狗的位置不动、只有颜色变。如果直接原地换贴图，
+     * 看起来像"同一只狗闪了一下"；缩到 0.35 再换，玩家读到的是"这只被换走了"。
+     *
+     * ⚠️ 必须 `StopAnim()`，**不能只用 `_cancelOneShot()`**：
+     *   `breathe.anim` 有一条 `dog/scale` 的 VectorTrack（1.0 → 1.06 → 1.0，wrapMode=2 循环），
+     *   而 `_cancelOneShot()` 只递增 token + 停 tween，**不停 AnimationState** ⇒
+     *   呼吸 clip 会继续每帧写 scale，和下面这条 scale tween 抢同一条轨道
+     *   （谁后更新谁生效，缩放动画可能整段看不见，且结果依赖引擎的更新顺序）。
+     *   所以这里显式 `StopAnim()` 把 clip 停掉，结束时补 `PlayBreathe()` 把呼吸循环接回去，
+     *   否则整盘狗都静止。
+     *
+     * delay 用于错峰：60 个槽位同时播会糊成一片，调用方按椅子/槽位给一个递增延迟。
+     */
+    public PlayShuffleSwap(color: DogColor, delay: number = 0, callback: () => void = null)
+    {
+        const dog = this._dogNode;
+        if (dog == null)
+        {
+            // 没有视觉子节点（理论上不会）：退化成直接换色，别把回调吞掉
+            this.DogColor = color;
+            this.RfreshDogSprite();
+            if (callback != null) callback();
+            return;
+        }
+
+        // 停 clip + 停 tween + 作废旧回调（breathe 会写 scale，见上面的说明）
+        this.StopAnim();
+        // 开局出生的错峰是靠 `scheduleOnce` 里 `dogIcon.node.active = true` 打开的。
+        // 如果玩家在错峰还没走完时就点重排，上面这句 StopAnim 会把那个回调作废
+        // （token 变了）⇒ 这只狗的 dogIcon 会永远停在隐藏状态，重排后就凭空少一只。
+        // 这里补一次显式打开。
+        dog.active = true;
+        const token = this._token;
+
+        tween(dog)
+            .delay(delay)
+            .to(0.10, { scale: new Vec3(0.35, 0.35, 1), eulerAngles: new Vec3(0, 0, -20) },
+                { easing: 'sineIn' })
+            .call(() => {
+                // 期间被 StopAnim / 换关接管了就安静退出，别回头抢姿态
+                if (token !== this._token) return;
+                this.DogColor = color;
+                this.DogState = DogState.Idle;
+                this.RfreshDogSprite();
+            })
+            .to(0.16, { scale: new Vec3(1.12, 1.12, 1), eulerAngles: new Vec3(0, 0, 6) },
+                { easing: 'backOut' })
+            // position 也要一起归零：hover_up / hover 这两个 clip 写的是 `dog` 的
+            // **绝对局部坐标**，狗被隐藏再放回来时可能还停在悬浮的抬升位上。
+            // 只复位 scale / 角度的话，重排后那只狗会整体偏高一截。
+            .to(0.08, {
+                scale: new Vec3(1, 1, 1),
+                eulerAngles: new Vec3(0, 0, 0),
+                position: new Vec3(0, 0, 0),
+            }, { easing: 'sineOut' })
+            .call(() => {
+                if (token !== this._token) return;
+                this.PlayBreathe();
+                if (callback != null) callback();
+            })
+            .start();
+    }
+
     public RefreshDogState(state:DogState)
     {
         if (this.DogState === state) return;

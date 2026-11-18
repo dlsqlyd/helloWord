@@ -308,6 +308,62 @@ export class GameDataManager implements IManager {
         return true;
     }
 
+    /**
+     * 重排盘面：把**所有已占用槽位**上的颜色做一次全局洗牌（位置不动，只换颜色）。
+     *
+     * 只动数据，不碰界面 —— 界面那边（`GameMainObj.onResetClickEvent`）拿洗牌后的
+     * `curLevelConfig` 和 `ChairNode.sortDog[j].DogColor` 逐格比对，只给**真的变了**的
+     * 那些格播换色动画。
+     *
+     * 三条不变量：
+     *   1. **只置换已占用的槽位** ⇒ 每根椅子的占位数量不变、仍然是"从椅底往上连续"，
+     *      不会写出 `dogs[0] == 0` 这种带空洞的非法盘面（IsCanChange / ChangeChairDogColor
+     *      都假设没有空洞）。
+     *   2. **颜色总数不变** ⇒ 盘面不会凭空多出/少掉某个颜色，不会出现"这个颜色永远凑不满"。
+     *   3. 空位（`dogs[j] == 0`）保持 0，不参与洗牌。
+     *
+     * @returns 真的换掉了至少一格返回 true；盘面少于 2 格、或者洗完和原来完全一样
+     *          （例如整盘只有一种颜色）返回 false —— 调用方据此决定要不要播动画。
+     */
+    public ShuffleBoard(): boolean
+    {
+        if (this.levelState != LevelState.Playing) return false;
+        const cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null || cfg.chairs == null) return false;
+
+        // 1) 收集所有占用槽位
+        const slots: { chair: number, slot: number, color: number }[] = [];
+        for (let i = 0; i < cfg.chairs.length; i++)
+        {
+            const dogs: number[] = cfg.chairs[i].dogs;
+            for (let j = 0; j < dogs.length; j++)
+            {
+                if (dogs[j] > 0) slots.push({ chair: i, slot: j, color: dogs[j] });
+            }
+        }
+        if (slots.length < 2) return false;
+
+        // 2) Fisher-Yates 洗颜色序列
+        const colors: number[] = [];
+        for (let k = 0; k < slots.length; k++) colors.push(slots[k].color);
+        for (let k = colors.length - 1; k > 0; k--)
+        {
+            const r: number = Math.floor(Math.random() * (k + 1));
+            const t: number = colors[k];
+            colors[k] = colors[r];
+            colors[r] = t;
+        }
+
+        // 3) 写回；全同色时洗了等于没洗，报 false 让界面别白播一遍动画
+        let moved: boolean = false;
+        for (let k = 0; k < slots.length; k++)
+        {
+            if (slots[k].color != colors[k]) moved = true;
+            cfg.chairs[slots[k].chair].dogs[slots[k].slot] = colors[k];
+        }
+        return moved;
+    }
+
     /** 结算一关。重复调用只生效一次（状态已经离开 Playing 就直接返回） */
     public FinishLevel(isWin: boolean): void
     {

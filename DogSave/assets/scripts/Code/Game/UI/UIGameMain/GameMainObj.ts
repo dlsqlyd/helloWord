@@ -1,4 +1,4 @@
-import { _decorator, Button, Component, find, Label, Node, UITransform, Vec3 } from 'cc';
+import { _decorator, Button, Component, find, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
 import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
 import { BattleMode, GameDataManager, LevelConfig, LevelState } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
@@ -50,8 +50,17 @@ export class GameMainObj extends Component {
 
     public UsingdDogs:DogNode[] = [];
 
+    /** 「+20 秒」一次加多少秒 */
+    private static readonly ADD_TIME_SECONDS: number = 20;
+
+    /** 重排动画进行中 —— 期间不接受重复点击，也不让盘面被点 */
+    private _isShuffling: boolean = false;
+
     start() {
         GameDataManager.instance.gameMainObj = this;
+        // 换关时清掉重排锁：上一关的重排动画可能正好跨过关（结算弹窗盖在盘面上），
+        // 那个收尾回调虽然还会跑，但不能指望它 —— 它可能已经被 StopAll 干掉了。
+        this._isShuffling = false;
         const i18n = I18NManager.instance;
         if (GameDataManager.instance.gameMode == BattleMode.Main)
             this.levelText.string = i18n != null
@@ -145,8 +154,11 @@ export class GameMainObj extends Component {
         this.settingBtn.node.off(Button.EventType.CLICK, this.onClickEvent, this);
         this.settingBtn.node.on(Button.EventType.CLICK, this.onClickEvent, this);
 
-        this.resetBtn.node.off(Button.EventType.CLICK, this.onResetEvent, this);
-        this.resetBtn.node.on(Button.EventType.CLICK, this.onResetEvent, this);
+        // ⚠️ 这里原来写的是 `this.onResetEvent` —— 本类**没有**这个方法（只有
+        //    onResetClickEvent）。传 undefined 进去，Cocos 不会报错，只是这个按钮
+        //    一辈子不响应：点上去连点击音都没有。改成真正的处理函数。
+        this.resetBtn.node.off(Button.EventType.CLICK, this.onResetClickEvent, this);
+        this.resetBtn.node.on(Button.EventType.CLICK, this.onResetClickEvent, this);
 
         this.addtimeBtn.node.off(Button.EventType.CLICK, this.onAddTimeClickEvent, this);
         this.addtimeBtn.node.on(Button.EventType.CLICK, this.onAddTimeClickEvent, this);
@@ -185,19 +197,133 @@ export class GameMainObj extends Component {
         GameDataManager.instance.FinishLevel(false);
     }
 
+    /**
+     * 「重排」按钮：把当前盘面的狗**打乱重排**，并播放交换动画。
+     *
+     * 流程刻意分成"先改数据、再播动画"（TODO 里的建议）：
+     *   1. `GameDataManager.ShuffleBoard()` 只置换颜色，不动位置 ⇒ 每根椅子的占位数量、
+     *      颜色总数都不变，不会写出带空洞的非法盘面；
+     *   2. 这里拿洗牌后的数据和 `ChairNode.sortDog[j].DogColor` 逐格比对，
+     *      **只给真的变了颜色**的那些格播 `PlayShuffleSwap`；
+     *   3. 动画期间把 `isCanClick` 锁住 —— 否则玩家能在狗还是旧颜色的时候点它搬走，
+     *      搬完数据是新的、画面是旧的，两边彻底错位；
+     *   4. 收尾补一次 `CheckDogFlyToCar()`：重排有可能刚好把某根椅子凑满同色，
+     *      和普通走子一样该让它飞向卡车。
+     *
+     * 有狗悬在半空（选中态）时先让它落回椅子再洗 —— 悬浮的那批是 AnimDog **拷贝**，
+     * 数据洗了、拷贝还是旧颜色，会看到"一只颜色对不上的狗飞回去"。
+     */
     private onResetClickEvent(button: Button){
-        console.log('onClickEvent setting');
         if (SoundManager.instance != null) 
             SoundManager.instance.playSound(SoundManager.SFX_CLICK);
-        //todo 实现当前关卡的狗狗打乱重排一下 并且需要实现交换动画，建议先改数据，再做动画
-    }
-    
 
-    private  onAddTimeClickEvent(button: Button){
-        console.log('onClickEvent setting');
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null || gdm.levelState != LevelState.Playing) return;
+        // 有狗正在飞 / 正在结算，先别动盘面
+        if (!gdm.isCanClick || this._isShuffling) return;
+
+        if (gdm.curSelectChairIdx >= 0 || gdm.curSelectRoomIdx > 0)
+        {
+            // 椅子是 0 基、狗窝是 1 基（同 SetSelectRoomId 里的说明）
+            if (gdm.curSelectChairIdx >= 0) this.PlayEndHover(gdm.curSelectChairIdx);
+            if (gdm.curSelectRoomIdx > 0) this.PlayEndHoverByRoomId(gdm.curSelectRoomIdx);
+            gdm.curSelectChairIdx = -1;
+            gdm.curSelectRoomIdx = -1;
+            // PlayEndHover 是 0.1s 的 tween，等它把 AnimDog 还回池子再洗
+            this.scheduleOnce(() => this.DoShuffleBoard(), 0.16);
+            return;
+        }
+        this.DoShuffleBoard();
+    }
+
+    /** 重排的实际执行（数据已在 ShuffleBoard 里换好，这里只驱动动画与锁） */
+    private DoShuffleBoard(): void
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null || gdm.levelState != LevelState.Playing || this._isShuffling) return;
+
+        if (!gdm.ShuffleBoard()) return;   // 盘面不足 2 格 / 洗完没变化，什么都不用做
+
+        this._isShuffling = true;
+        gdm.isCanClick = false;
+
+        const cfg: LevelConfig = gdm.curLevelConfig;
+        let maxDelay: number = 0;
+        for (let i = 0; i < cfg.chairs.length && i < this.chairNodes.length; i++)
+        {
+            const chairNode: ChairNode = this.chairNodes[i];
+            if (chairNode == null || !chairNode.node.active) continue;
+
+            const dogs: number[] = cfg.chairs[i].dogs;
+            for (let j = 0; j < chairNode.sortDog.length && j < dogs.length; j++)
+            {
+                const dog: DogNode = chairNode.sortDog[j];
+                if (dog == null) continue;
+                if (dogs[j] <= 0) continue;              // 空位不参与
+                if (dog.DogColor == dogs[j]) continue;   // 颜色没变就别白抖一下
+
+                // 错峰：按椅子铺开、再按槽位细错开，看起来像"一波波洗过去"
+                const delay: number = i * 0.03 + j * 0.02;
+                if (delay > maxDelay) maxDelay = delay;
+                dog.PlayShuffleSwap(dogs[j], delay);
+            }
+        }
+
+        // PlayShuffleSwap 本体 0.34s（0.10 + 0.16 + 0.08）
+        // 收尾回调里要防"洗到一半换关"：`SetLevelCfgById` 每次都 Clone 一份新配置，
+        // 所以拿引用当"第几关"的令牌就够了。换关时 `start()` 已经清过 _isShuffling，
+        // 这里直接退出，别去动新关的 isCanClick / 别在新关盘面上触发飞行。
+        const cfgRef: LevelConfig = cfg;
+        this.scheduleOnce(() => {
+            if (gdm.curLevelConfig !== cfgRef) return;
+            this._isShuffling = false;
+            gdm.isCanClick = true;
+            // 洗牌途中可能刚好超时判负（FinishLevel 已把状态切走），那就别再起飞了
+            if (gdm.levelState != LevelState.Playing) return;
+            // 重排后可能刚好凑满一根椅子 —— 交给统一的判定去起飞
+            gdm.CheckDogFlyToCar();
+        }, maxDelay + 0.36);
+    }
+
+    /**
+     * 「+20 秒」按钮。
+     *
+     * 只加时间、不动盘面。加完**立刻**刷新 Label —— `update()` 只在"整秒数变了"才写，
+     * 而从 47.6s 加到 67.6s 的下一秒 before=68/after=68 可能相等，那一帧就不写了。
+     * 动画照 TODO 的要求：先放大 → 左右摇晃 → 缩回原大小。
+     */
+    private onAddTimeClickEvent(button: Button){
         if (SoundManager.instance != null) 
             SoundManager.instance.playSound(SoundManager.SFX_CLICK);
-        //todo 实现当前关卡的时间增加 一次增加20s 也需要有动画表现，时间放大然后摇晃然后还原大小
+
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null || gdm.levelState != LevelState.Playing) return;
+
+        gdm.curTime += GameMainObj.ADD_TIME_SECONDS;
+        this.RefreshTimeText();
+        this.PlayTimeAddAnim();
+    }
+
+    /** 倒计时文字的"+时间"反馈：放大 → 摇晃 → 还原 */
+    private PlayTimeAddAnim(): void
+    {
+        const node: Node = this.timeText != null ? this.timeText.node : null;
+        if (node == null) return;
+
+        // 连点不要叠加：先掐掉上一段，再从头播
+        Tween.stopAllByTarget(node);
+        node.setScale(1, 1, 1);
+        node.angle = 0;
+
+        tween(node)
+            .to(0.12, { scale: new Vec3(1.5, 1.5, 1) }, { easing: 'backOut' })
+            .to(0.06, { angle: 9 })
+            .to(0.08, { angle: -9 })
+            .to(0.08, { angle: 7 })
+            .to(0.08, { angle: -7 })
+            .to(0.06, { angle: 0 })
+            .to(0.14, { scale: new Vec3(1, 1, 1) }, { easing: 'sineOut' })
+            .start();
     }
     
 
