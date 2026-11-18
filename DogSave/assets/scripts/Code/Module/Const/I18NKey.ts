@@ -134,4 +134,7 @@ export enum I18NKey
     Update_Fail = 97,
     /** "发现 {0} 个资源包需要更新，是否立即下载？" */
     Update_BundleAsk = 98,
+
+    /** 主界面道具按钮：数量为 0 还去点 */
+    Game_Toast_NoItem = 99,
 }

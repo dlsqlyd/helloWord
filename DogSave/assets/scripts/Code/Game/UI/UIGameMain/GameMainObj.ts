@@ -1,6 +1,6 @@
 import { _decorator, Button, Component, find, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
 import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
-import { BattleMode, GameDataManager, LevelConfig, LevelState } from '../../GameDataManager';
+import { BattleMode, GameDataManager, ItemID, LevelConfig, LevelState } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
 import { DogColor, DogNode, DogState, DOG_SFX_HAPPY } from './DogNode';
 import { DoorNode, DoorState } from './DoorNode';
@@ -11,6 +11,7 @@ import { UIManager } from '../../../Module/UI/UIManager';
 import { UIGameResultView } from './UIGameResultView';
 import { I18NKey } from '../../../Module/Const/I18NKey';
 import { I18NManager } from '../../../Module/I18N/I18NManager';
+import { UIToast } from '../UICommon/UIToast';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameMainObj')
@@ -35,6 +36,19 @@ export class GameMainObj extends Component {
     public resetBtn: Button;
     @property(Button)
     public addtimeBtn: Button;
+
+    /**
+     * 两个道具按钮右下角的**数量**文案（预制体里 `reset_Button/count_txt`、
+     * `add_Button/count_txt`）。
+     *
+     * 这两块原来是烘在 PNG 里的「+」角标 —— 加号换成数量之后就不能再烘了，
+     * 数量是运行时数据（`GameDataManager.GetItemNum(ItemID)`），
+     * 所以改成预制体里叠一个 Label，由 `RefreshItemCount()` 写。
+     */
+    @property(Label)
+    public resetCountText: Label;
+    @property(Label)
+    public addtimeCountText: Label;
 
     @property(ChairNode)
     public chairNodes:ChairNode[] = [];
@@ -173,6 +187,22 @@ export class GameMainObj extends Component {
             if (timeNode != null) this.timeText = timeNode.getComponent(Label);
         }
 
+        // 数量 Label 的兜底，同上。⚠️ 路径必须带上按钮名 ——
+        // 两个按钮下都叫 `count_txt`，只写 "count_txt" 会只认第一个（find 取首个匹配），
+        // 加时按钮就永远刷不到数字。
+        if (this.resetCountText == null)
+        {
+            let n: Node = find("bg/bottomNode/reset_Button/count_txt", this.node);
+            if (n != null) this.resetCountText = n.getComponent(Label);
+        }
+        if (this.addtimeCountText == null)
+        {
+            let n: Node = find("bg/bottomNode/add_Button/count_txt", this.node);
+            if (n != null) this.addtimeCountText = n.getComponent(Label);
+        }
+        // start() 每次换关都会被重调 ⇒ 顺带把数量刷一遍（数量是跨关的，换关后可能已经变了）
+        this.RefreshItemCount();
+
         // 倒计时是"这一关"的状态，必须在**铺完盘之后**才启动。
         // start() 每次换关都会被 GameDataManager.SetLevelCfgById 再调一遍，
         // 所以这里同时也是"重开一关时把倒计时重置"的地方。
@@ -195,6 +225,55 @@ export class GameMainObj extends Component {
             SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // await UIManager.instance.openBox(UIGameResultView,UIGameResultView.PrefabPath);
         GameDataManager.instance.FinishLevel(false);
+    }
+
+    // ------------------------------------------------------------ 道具（数量 / 扣减）
+    /**
+     * 把两个道具的**剩余数量**写到按钮右下角。
+     *
+     * 数据源只有一个：`GameDataManager.GetItemNum()` —— 这里**只读不写**，
+     * 扣减走 `ConsumeItem()`。`start()`（每次换关）+ 每次消耗后各刷一次。
+     *
+     * 空值判断是给"编辑器里有人解绑了 @property、路径兜底也没找到"的情况留的：
+     * 少一个数字不该让整个主界面报错。
+     */
+    private RefreshItemCount(): void
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null) return;
+        if (this.resetCountText != null)
+            this.resetCountText.string = String(gdm.GetItemNum(ItemID.RefreshLevelItem));
+        if (this.addtimeCountText != null)
+            this.addtimeCountText.string = String(gdm.GetItemNum(ItemID.AddTimeItem));
+    }
+
+    /**
+     * 数量够不够用。不够就弹「道具不足」并返回 false ——
+     * 调用方拿到 false 直接 return，别再往下走。
+     */
+    private CheckItem(id: ItemID): boolean
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null) return false;
+        if (gdm.GetItemNum(id) > 0) return true;
+
+        const i18n = I18NManager.instance;
+        UIToast.showToast(i18n != null ? i18n.t(I18NKey.Game_Toast_NoItem) : "道具不足");
+        return false;
+    }
+
+    /**
+     * 消耗一个道具并刷新角标。
+     *
+     * ⚠️ 必须**先 CheckItem 再用**，这里不重复判数量：`AddItemNum` 只在 key 存在时生效，
+     * 而 key 是 `init()` 里建好的（各 1 个），不会凭空多出来。
+     */
+    private ConsumeItem(id: ItemID): void
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null) return;
+        gdm.AddItemNum(id, -1);
+        this.RefreshItemCount();
     }
 
     /**
@@ -221,6 +300,10 @@ export class GameMainObj extends Component {
         if (gdm == null || gdm.levelState != LevelState.Playing) return;
         // 有狗正在飞 / 正在结算，先别动盘面
         if (!gdm.isCanClick || this._isShuffling) return;
+        // 道具数量在这里判、**扣减放在 DoShuffleBoard 里**：
+        // 洗牌有可能"洗完没变化"（盘面不足 2 格 / 全是同色）而直接 return，
+        // 那种情况下不该白扣一个。
+        if (!this.CheckItem(ItemID.RefreshLevelItem)) return;
 
         if (gdm.curSelectChairIdx >= 0 || gdm.curSelectRoomIdx > 0)
         {
@@ -243,6 +326,9 @@ export class GameMainObj extends Component {
         if (gdm == null || gdm.levelState != LevelState.Playing || this._isShuffling) return;
 
         if (!gdm.ShuffleBoard()) return;   // 盘面不足 2 格 / 洗完没变化，什么都不用做
+
+        // 真的洗了才扣道具（上面那句 return 的情况一个都不扣）
+        this.ConsumeItem(ItemID.RefreshLevelItem);
 
         this._isShuffling = true;
         gdm.isCanClick = false;
@@ -298,10 +384,12 @@ export class GameMainObj extends Component {
 
         const gdm: GameDataManager = GameDataManager.instance;
         if (gdm == null || gdm.levelState != LevelState.Playing) return;
+        if (!this.CheckItem(ItemID.AddTimeItem)) return;
 
         gdm.curTime += GameMainObj.ADD_TIME_SECONDS;
         this.RefreshTimeText();
         this.PlayTimeAddAnim();
+        this.ConsumeItem(ItemID.AddTimeItem);
     }
 
     /** 倒计时文字的"+时间"反馈：放大 → 摇晃 → 还原 */

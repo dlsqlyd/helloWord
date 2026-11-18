@@ -74,6 +74,11 @@ export enum BattleMode {
     Puzzle, //拼图模式
 }
 
+export enum ItemID {
+    RefreshLevelItem = 1, //刷新道具
+    AddTimeItem = 2,//时间道具
+}
+
 export class GameDataManager implements IManager {
     private static _instance: GameDataManager;
     private datas: LevelDatas;
@@ -84,6 +89,7 @@ export class GameDataManager implements IManager {
     public curLevelConfig:LevelConfig;
     public gameMainObj:GameMainObj;
     public isCanClick:boolean = true;
+    public itemdict: Map<number, number> = new Map<number, number>();
 
     /**
      * 上一次过关解锁的拼图碎片下标，-1 = 没有（没赢 / 已经集满 / 已经被取走）。
@@ -120,8 +126,29 @@ export class GameDataManager implements IManager {
 
     public async init() {
         GameDataManager._instance = this;
+        this.SetItemNum(ItemID.RefreshLevelItem, 1);
+        this.SetItemNum(ItemID.AddTimeItem, 1);
         // Messager.Instance.AddListener<int, int>(0, MessageId.OnKeyInput, OnKeyInput);
     }
+
+    public GetItemNum(itemid:number):number
+    {
+        if (this.itemdict.has(itemid))
+            return this.itemdict.get(itemid);
+        return 0;
+    }
+
+    public SetItemNum(itemid:number, num:number)
+    {
+        this.itemdict.set(itemid, num);
+    }
+
+    public AddItemNum(itemid:number, num:number)
+    {
+        if (this.itemdict.has(itemid))
+            this.itemdict.set(itemid, this.GetItemNum(itemid) + num);
+    }
+
 
     public async SetGameMode(mode:BattleMode)
     {
