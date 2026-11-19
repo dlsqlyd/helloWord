@@ -3,6 +3,7 @@ import { DogColor, DogNode } from './DogNode';
 import { ImageLoaderManager } from '../../../Module/Resource/ImageLoaderManager';
 import { GameDataManager, LevelState } from '../../GameDataManager';
 import { close } from '../../../../../../extensions/taowu-editor/source/panel';
+import { SoundManager } from '../../../Module/Resource/SoundManager';
 const { ccclass, property } = _decorator;
 
 export enum DoorState {
@@ -65,6 +66,8 @@ export class DoorNode extends Component {
      */
     private onAdsUnlock()
     {
+         if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // 结算弹窗弹出后盘面是冻住的（只有 Playing 才接受操作），这时不该还能解锁。
         // 和 GameDataManager.SetSelectChairId 用同一条判据。
         if (GameDataManager.instance == null) return;

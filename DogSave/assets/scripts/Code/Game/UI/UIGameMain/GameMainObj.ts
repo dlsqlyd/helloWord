@@ -1,6 +1,6 @@
 import { _decorator, Button, Component, find, Label, Node, Sprite, SpriteFrame, Tween, tween, UIOpacity, UITransform, Vec3 } from 'cc';
 import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
-import { BattleMode, CrystalPair, GameDataManager, ItemID, LevelConfig, LevelState, SlotFlag } from '../../GameDataManager';
+import { BattleMode, CrystalPair, GameDataManager, HolderSpot, ItemID, LevelConfig, LevelState, SlotFlag } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
 import { DogColor, DogNode, DogState, DOG_SFX_HAPPY } from './DogNode';
 import { DoorNode, DoorState } from './DoorNode';
@@ -37,11 +37,15 @@ export class GameMainObj extends Component {
     @property(Button)
     public addtimeBtn: Button;
 
+    /** 第三个道具：金色锤子（预制体里的 `bg/bottomNode/golden_Button`） */
+    @property(Button)
+    public goldenHammerBtn: Button;
+
     /**
-     * 两个道具按钮右下角的**数量**文案（预制体里 `reset_Button/count_txt`、
-     * `add_Button/count_txt`）。
+     * 三个道具按钮右下角的**数量**文案（预制体里 `reset_Button/count_txt`、
+     * `add_Button/count_txt`、`golden_Button/count_txt`）。
      *
-     * 这两块原来是烘在 PNG 里的「+」角标 —— 加号换成数量之后就不能再烘了，
+     * 这几块原来是烘在 PNG 里的「+」角标 —— 加号换成数量之后就不能再烘了，
      * 数量是运行时数据（`GameDataManager.GetItemNum(ItemID)`），
      * 所以改成预制体里叠一个 Label，由 `RefreshItemCount()` 写。
      */
@@ -49,6 +53,8 @@ export class GameMainObj extends Component {
     public resetCountText: Label;
     @property(Label)
     public addtimeCountText: Label;
+    @property(Label)
+    public goldenHammerCountText: Label;
 
     @property(ChairNode)
     public chairNodes:ChairNode[] = [];
@@ -70,11 +76,21 @@ export class GameMainObj extends Component {
     /** 重排动画进行中 —— 期间不接受重复点击，也不让盘面被点 */
     private _isShuffling: boolean = false;
 
+    /**
+     * 金色锤子甩锤动画进行中 —— 同样挡重复点击。
+     *
+     * 和 `_isShuffling` 分开是因为两者可能各自在播（虽然实际不会同时），
+     * 而且清锁的时机不一样：重排靠 scheduleOnce，这个靠动画结束回调。
+     */
+    private _isHammering: boolean = false;
+
     start() {
         GameDataManager.instance.gameMainObj = this;
         // 换关时清掉重排锁：上一关的重排动画可能正好跨过关（结算弹窗盖在盘面上），
         // 那个收尾回调虽然还会跑，但不能指望它 —— 它可能已经被 StopAll 干掉了。
         this._isShuffling = false;
+        // 甩锤同理：动画的收尾回调挂在旧节点上，换关后不一定还回来
+        this._isHammering = false;
         const i18n = I18NManager.instance;
         if (GameDataManager.instance.gameMode == BattleMode.Main)
             this.levelText.string = i18n != null
@@ -177,6 +193,14 @@ export class GameMainObj extends Component {
         this.addtimeBtn.node.off(Button.EventType.CLICK, this.onAddTimeClickEvent, this);
         this.addtimeBtn.node.on(Button.EventType.CLICK, this.onAddTimeClickEvent, this);
 
+        // 金色锤子按钮：老工程里没有这个节点时 `goldenHammerBtn` 是 null，
+        // 这里用 `?.` 兜住 —— 少一个按钮不该让整个主界面报错（下面还有路径兜底）。
+        if (this.goldenHammerBtn != null)
+        {
+            this.goldenHammerBtn.node.off(Button.EventType.CLICK, this.onGoldenHammerClickEvent, this);
+            this.goldenHammerBtn.node.on(Button.EventType.CLICK, this.onGoldenHammerClickEvent, this);
+        }
+
         // timeText 的 @property 绑定是新增的（预制体里的 "timeText" 字段）。
         // 兜底：万一编辑器没把这条绑定读进来（或有人在编辑器里解绑了），按路径再找一次。
         // 路径取自预制体的实际结构 bg/TopNode/timeBg/time_txt，名字唯一，
@@ -199,6 +223,26 @@ export class GameMainObj extends Component {
         {
             let n: Node = find("bg/bottomNode/add_Button/count_txt", this.node);
             if (n != null) this.addtimeCountText = n.getComponent(Label);
+        }
+        // 金色锤子：按钮和数量都按路径兜底。按钮是**后加**的，老预制体里没有，
+        // 所以绑定时它还是 null —— 在这里找到之后要补一次 on（先 off 保证不重复）。
+        if (this.goldenHammerBtn == null)
+        {
+            let n: Node = find("bg/bottomNode/golden_Button", this.node);
+            if (n != null)
+            {
+                this.goldenHammerBtn = n.getComponent(Button);
+                if (this.goldenHammerBtn != null)
+                {
+                    this.goldenHammerBtn.node.off(Button.EventType.CLICK, this.onGoldenHammerClickEvent, this);
+                    this.goldenHammerBtn.node.on(Button.EventType.CLICK, this.onGoldenHammerClickEvent, this);
+                }
+            }
+        }
+        if (this.goldenHammerCountText == null)
+        {
+            let n: Node = find("bg/bottomNode/golden_Button/count_txt", this.node);
+            if (n != null) this.goldenHammerCountText = n.getComponent(Label);
         }
         // start() 每次换关都会被重调 ⇒ 顺带把数量刷一遍（数量是跨关的，换关后可能已经变了）
         this.RefreshItemCount();
@@ -249,6 +293,8 @@ export class GameMainObj extends Component {
             this.resetCountText.string = String(gdm.GetItemNum(ItemID.RefreshLevelItem));
         if (this.addtimeCountText != null)
             this.addtimeCountText.string = String(gdm.GetItemNum(ItemID.AddTimeItem));
+        if (this.goldenHammerCountText != null)
+            this.goldenHammerCountText.string = String(gdm.GetItemNum(ItemID.GoldenHammerItem));
     }
 
     /**
@@ -394,6 +440,93 @@ export class GameMainObj extends Component {
         this.RefreshTimeText();
         this.PlayTimeAddAnim();
         this.ConsumeItem(ItemID.AddTimeItem);
+    }
+
+    /**
+     * 「金色锤子」按钮：让一只抱锤子的狗**主动**把锤子甩出去，砸它对应的冰晶。
+     *
+     * 表现完全复用普通玩法那套（`PlayHammerBreak`），区别只有两点：
+     *   1. 抱锤子的狗**不消失** —— 只是锤子脱手飞走，狗留在原地继续玩；
+     *   2. 由玩家点按钮触发，所以必须先把锤子从狗（或狗窝）身上"摘"下来，
+     *      否则飞出去的那把和还举着的那把会同时出现在屏幕上。
+     *
+     * 场上没有被冰晶锁住的狗时**完全不响应**（用户要求：点了没法反应）——
+     * 连"道具不足"都不弹，避免玩家以为是用错了道具。
+     */
+    private onGoldenHammerClickEvent(button: Button){
+        if (SoundManager.instance != null)
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
+
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null || gdm.levelState != LevelState.Playing) return;
+        if (!gdm.isCanClick || this._isShuffling || this._isHammering) return;
+
+        // 判据只看数据：有没有"没碎 + 冰晶格还在 + 锤子找得到"的一对
+        const pair: CrystalPair = gdm.PickUsablePair();
+        if (pair == null) return;
+
+        const spot: HolderSpot = gdm.FindHolderSpot(pair);
+        if (spot == null) return;
+        const fromWorld: Vec3 = this.GetHolderWorld(spot);
+        if (fromWorld == null) return;
+
+        if (!this.CheckItem(ItemID.GoldenHammerItem)) return;
+        this.ConsumeItem(ItemID.GoldenHammerItem);
+
+        // 先摘标记 + 收掉覆盖层，再让临时节点从原地飞出去。
+        // 顺序不能反 —— 先飞再摘的话，狗身上那把会一直挂到 BreakCrystal 才消失。
+        gdm.DetachHammer(pair);
+        this.HideHolderHammer(spot);
+
+        this._isHammering = true;
+        gdm.isCanClick = false;
+        this.PlayHammerBreak(pair, fromWorld, () => {
+            this._isHammering = false;
+            // 换关后 curLevelConfig 已经是新对象，但 isCanClick 是全局的、归 true 才对
+            gdm.isCanClick = true;
+            // 冰晶一碎，那根椅子可能刚好凑满同色 ⇒ 补一次"该不该飞"的判定。
+            // 普通玩法里这次判定由消除回调链带出来，道具这条路没人带 —— 不补的话
+            // 玩家得再随便走一步，那根已经齐了的椅子才起飞。
+            this.scheduleOnce(() => {
+                if (gdm.levelState == LevelState.Playing) gdm.CheckDogFlyToCar();
+            }, 0.4);
+        });
+    }
+
+    /** 抱锤子那只狗（或狗窝）的世界坐标 —— 锤子飞行的起点 */
+    private GetHolderWorld(spot: HolderSpot): Vec3
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null || spot == null) return null;
+        if (spot.chair >= 0)
+        {
+            const dog: DogNode = this.GetDogNodeBySlot(spot.chair, spot.slot);
+            if (dog == null || dog.node == null) return null;
+            return gdm.LocalToWorld(dog.node.parent, dog.node.position);
+        }
+        if (spot.room > 0)
+        {
+            const room: RoomNode = this.GetRoomNode(spot.room);
+            if (room == null || room.dogIcon == null || room.dogIcon.node == null) return null;
+            return gdm.LocalToWorld(room.dogIcon.node.parent, room.dogIcon.node.position);
+        }
+        return null;
+    }
+
+    /** 把锤子覆盖层从它现在待的地方收掉（椅子上那只 / 狗窝上那把） */
+    private HideHolderHammer(spot: HolderSpot): void
+    {
+        if (spot == null) return;
+        if (spot.chair >= 0)
+        {
+            const dog: DogNode = this.GetDogNodeBySlot(spot.chair, spot.slot);
+            if (dog != null) dog.HideHammer();
+        }
+        if (spot.room > 0)
+        {
+            const room: RoomNode = this.GetRoomNode(spot.room);
+            if (room != null) room.HideHammer();
+        }
     }
 
     /** 倒计时文字的"+时间"反馈：放大 → 摇晃 → 还原 */
@@ -687,21 +820,33 @@ export class GameMainObj extends Component {
      *
      * 用一个**临时节点**当锤子，而不是复用狗身上的那个 —— 那只狗正在飞、马上要被
      * `chairNode.node.active = false` 一起关掉，锤子挂在它身上会跟着消失。
+     *
+     * @param onDone 收尾回调（**所有**出口都会调一次，包括提前 return 的分支）。
+     *               金色锤子道具靠它解 `isCanClick` 锁 —— 少调一次盘面就永久卡住。
      */
-    private async PlayHammerBreak(pair: CrystalPair, fromWorld: Vec3): Promise<void>
+    private async PlayHammerBreak(pair: CrystalPair, fromWorld: Vec3, onDone?: () => void): Promise<void>
     {
+        // 保证只回调一次：正常播完走 tween 的 .call，中途换关走早退分支
+        let finished: boolean = false;
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            if (onDone != null) onDone();
+        };
+
         const gdm: GameDataManager = GameDataManager.instance;
-        if (gdm == null || pair == null || pair.broken) return;
+        if (gdm == null || pair == null || pair.broken) { finish(); return; }
 
         const crystalDog: DogNode = this.GetDogNodeBySlot(pair.crystalChair, pair.crystalSlot);
         const sf: SpriteFrame = await DogNode.LoadHammerFrame(pair.crystalColor);
         // 等图期间可能已经换关（crystalPairs 会被重建）—— 旧关卡的一对就别再动了
-        if (gdm.crystalPairs.indexOf(pair) < 0) return;
+        if (gdm.crystalPairs.indexOf(pair) < 0) { finish(); return; }
         if (crystalDog == null || !crystalDog.node.active || sf == null)
         {
             // 冰晶狗不在了（理论上不该发生）也别把这一对卡住：直接按已破处理
             gdm.BreakCrystal(pair);
             this.RefreshCrystalOverlays();
+            finish();
             return;
         }
 
@@ -763,6 +908,7 @@ export class GameMainObj extends Component {
                 fly.destroy();
                 gdm.BreakCrystal(pair);
                 this.PlayCrystalBreak(crystalDog);
+                finish();
             })
             .start();
     }

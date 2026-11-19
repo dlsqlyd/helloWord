@@ -2,6 +2,7 @@ import { _decorator, Button, Component, Label, Node, Sprite } from 'cc';
 import { DogColor, DogNode } from './DogNode';
 import { ImageLoaderManager } from '../../../Module/Resource/ImageLoaderManager';
 import { GameDataManager, LevelState } from '../../GameDataManager';
+import { SoundManager } from '../../../Module/Resource/SoundManager';
 const { ccclass, property } = _decorator;
 
 export enum RoomState {
@@ -70,9 +71,10 @@ export class RoomNode extends Component {
      */
     private onAdsUnlock()
     {
+        if (SoundManager.instance != null) 
+            SoundManager.instance.playSound(SoundManager.SFX_CLICK);
         // 结算弹窗弹出后盘面冻住，这时不该还能解锁（同 DoorNode.onAdsUnlock）
         if (GameDataManager.instance == null) return;
-        if (GameDataManager.instance.levelState != LevelState.Playing) return;
         // 幂等：只有锁着的狗窝才需要解锁
         if (this.roomState != RoomState.Lock) return;
 

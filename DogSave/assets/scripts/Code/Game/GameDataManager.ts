@@ -85,6 +85,22 @@ export class CrystalPair
 }
 
 /**
+ * 抱锤子那只狗**现在**待在哪 —— 椅子上、还是已经被停进了狗窝。
+ *
+ * 金色锤子道具要"隔空把锤子甩出去"，就得先知道锤子此刻画在哪个节点上，
+ * 否则锤子会从屏幕左上角凭空飞出来。椅子是 0 基、狗窝是 1 基（同 SetSelectRoomId）。
+ */
+export class HolderSpot
+{
+    /** 椅子下标，-1 = 不在椅子上 */
+    public chair: number = -1;
+    /** 椅子上的槽位，-1 = 不在椅子上 */
+    public slot: number = -1;
+    /** 狗窝序号（1 基），0 = 不在狗窝里 */
+    public room: number = 0;
+}
+
+/**
  * 一关的进行状态。
  *
  * 只有 `Playing` 期间才倒计时、才接受点击 —— 结算弹窗弹出来之后盘面必须冻住，
@@ -112,6 +128,8 @@ export enum BattleMode {
 export enum ItemID {
     RefreshLevelItem = 1, //刷新道具
     AddTimeItem = 2,//时间道具
+    /** 金色锤子：场上还有冰晶时，让一只抱锤子的狗**主动**把锤子甩出去砸冰晶 */
+    GoldenHammerItem = 3,
 }
 
 export class GameDataManager implements IManager {
@@ -182,6 +200,7 @@ export class GameDataManager implements IManager {
         GameDataManager._instance = this;
         this.SetItemNum(ItemID.RefreshLevelItem, 1);
         this.SetItemNum(ItemID.AddTimeItem, 1);
+        this.SetItemNum(ItemID.GoldenHammerItem, 1);
         // Messager.Instance.AddListener<int, int>(0, MessageId.OnKeyInput, OnKeyInput);
     }
 
@@ -469,6 +488,95 @@ export class GameDataManager implements IManager {
         return pair != null ? pair.crystalColor : -1;
     }
 
+    /**
+     * 抱锤子那只狗**现在**在哪：先找椅子上的槽位标记，再找狗窝。
+     * 都没有 ⇒ null（比如那一对已经被敲碎、或者数据还没铺好）。
+     */
+    public FindHolderSpot(pair: CrystalPair): HolderSpot
+    {
+        if (pair == null) return null;
+
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg != null)
+        {
+            for (let i = 0; i < cfg.chairs.length; i++)
+            {
+                let ch: LevelChairData = cfg.chairs[i];
+                if (ch == null || ch.flags == null) continue;
+                for (let j = 0; j < ch.flags.length; j++)
+                {
+                    if (ch.flags[j] != SlotFlag.Hammer) continue;
+                    if (ch.dogs[j] != pair.holderColor) continue;
+                    let spot: HolderSpot = new HolderSpot();
+                    spot.chair = i;
+                    spot.slot = j;
+                    return spot;
+                }
+            }
+        }
+
+        // 窝里那只：`hammerInRoom` 的 value 是"抱锤子那只狗自己的颜色"，
+        // 而颜色在一关内按对唯一（见 GenerateCrystalPairs 的两两取色）⇒ 够用来定位。
+        let roomId: number = 0;
+        this.hammerInRoom.forEach((color: number, id: number) => {
+            if (roomId == 0 && color == pair.holderColor) roomId = id;
+        });
+        if (roomId > 0)
+        {
+            let spot: HolderSpot = new HolderSpot();
+            spot.room = roomId;
+            return spot;
+        }
+        return null;
+    }
+
+    /**
+     * 当前**还能敲**的冰晶对：没碎、冰晶格还在、而且锤子找得到。
+     *
+     * 金色锤子道具的可用判据就是它 —— 空数组 ⇒ 场上没有被水晶锁住的狗，
+     * 点了应该毫无反应（连"道具不足"都不弹，见 GameMainObj.onGoldenHammerClickEvent）。
+     */
+    public GetUsablePairs(): CrystalPair[]
+    {
+        let out: CrystalPair[] = [];
+        let cfg: LevelConfig = this.curLevelConfig;
+        for (let i = 0; i < this.crystalPairs.length; i++)
+        {
+            let p: CrystalPair = this.crystalPairs[i];
+            if (p == null || p.broken) continue;
+            if (!this.IsSlotCrystal(p.crystalChair, p.crystalSlot)) continue;
+            // 冰晶格上还得真的有狗 —— 标记和狗是两套数据，脏了的话别当成"锁住的狗"
+            let ch: LevelChairData = cfg != null ? cfg.chairs[p.crystalChair] : null;
+            if (ch == null || ch.dogs == null || ch.dogs[p.crystalSlot] <= 0) continue;
+            if (this.FindHolderSpot(p) == null) continue;
+            out.push(p);
+        }
+        return out;
+    }
+
+    /** 随机挑一对能敲的（没有就返回 null） */
+    public PickUsablePair(): CrystalPair
+    {
+        let list: CrystalPair[] = this.GetUsablePairs();
+        if (list.length <= 0) return null;
+        return list[Math.floor(Math.random() * list.length)];
+    }
+
+    /**
+     * 锤子脱手：把"抱着锤子"的标记从它现在待的位置摘掉（椅子槽位 / 狗窝）。幂等。
+     *
+     * 普通玩法里不用单独调 —— 抱锤子的狗是**整椅被消除**，清 dogs/flags 时顺手就没了。
+     * 金色锤子是"隔空甩锤"、狗还留在原地，所以必须显式摘标记，
+     * 否则那只狗会一直举着一把已经用掉的锤子。
+     */
+    public DetachHammer(pair: CrystalPair): void
+    {
+        let spot: HolderSpot = this.FindHolderSpot(pair);
+        if (spot == null) return;
+        if (spot.chair >= 0) this.SetSlotFlag(spot.chair, spot.slot, SlotFlag.Normal);
+        if (spot.room > 0) this.hammerInRoom.delete(spot.room);
+    }
+
     /** 清掉本关所有冰晶 / 锤子标记（换关时调） */
     public ClearCrystalPairs(): void
     {
@@ -597,6 +705,9 @@ export class GameDataManager implements IManager {
         pair.broken = true;
         if (this.IsSlotCrystal(pair.crystalChair, pair.crystalSlot))
             this.SetSlotFlag(pair.crystalChair, pair.crystalSlot, SlotFlag.Normal);
+        // 锤子跟着消失：金色锤子那条路上抱锤子的狗**不会**被消除，不摘标记的话
+        // 它会一直举着一把已经用掉的锤子。普通玩法里椅子的 flags 早就被清空了，这里是空操作。
+        this.DetachHammer(pair);
     }
 
     /**
