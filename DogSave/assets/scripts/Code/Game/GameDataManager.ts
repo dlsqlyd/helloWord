@@ -47,6 +47,41 @@ export class LevelConfig {
 @JsonType("LevelChairData")
 export class LevelChairData {
     public dogs: number[];
+    /**
+     * 与 `dogs` 等长的槽位标记（冰晶玩法，见 `SlotFlag`）。
+     *
+     * ⚠️ 关卡表里**没有**这个字段 —— 它是运行时生成的，读出来是 undefined，
+     * 所以所有读的地方都要走 `GetSlotFlag()`（内部按 Normal 兜底），别直接下标。
+     */
+    public flags: number[];
+}
+
+/**
+ * 槽位标记。冰晶玩法（第 5 关起）用它区分"普通 / 被冻住 / 抱着锤子"三种狗。
+ *
+ * 为什么挂在**槽位**上而不是挂在颜色上：同一颜色可能有好几只狗，而"被冻住的是哪一只"
+ * 是有意义的（同一根椅子上其它同色狗还能动）。反过来，锤子会跟着狗在椅子之间搬来搬去，
+ * 所以标记必须跟着槽位一起搬（见 ChangeChairDogColor）。
+ */
+export enum SlotFlag
+{
+    Normal = 0,
+    /** 被冰晶封住：不能移动、不能被消除、所在椅子不能飞向卡车 */
+    Crystal = 1,
+    /** 抱着锤子：锤子颜色 = 与它配对的那只冰晶狗的颜色 */
+    Hammer = 2,
+}
+
+/** 一对「冰晶狗 + 抱锤子的狗」。颜色在两对之间保证互不相同。 */
+export class CrystalPair
+{
+    public crystalChair: number = -1;
+    public crystalSlot: number = -1;
+    /** 被冻住那只狗的颜色 —— 也就是**锤子的颜色** */
+    public crystalColor: number = 0;
+    /** 抱锤子那只狗自己的颜色（必然 ≠ crystalColor） */
+    public holderColor: number = 0;
+    public broken: boolean = false;
 }
 
 /**
@@ -114,6 +149,25 @@ export class GameDataManager implements IManager {
      */
     private _levelHasDogs: boolean = false;
     public curSelectDate:Date;
+
+    // ---------------------------------------------------------------- 冰晶玩法
+    /** 从第几关开始出现冰晶 / 锤子（想调整玩法登场节奏改这里） */
+    public static readonly CRYSTAL_START_LEVEL: number = 5;
+
+    /** 本关的配对。每关开局由 `GenerateCrystalPairs()` 重算 */
+    public crystalPairs: CrystalPair[] = [];
+
+    /**
+     * 抱着锤子的狗被停进狗窝时，锤子跟着进窝。
+     *
+     * key = 狗窝序号（1 基），value = **抱锤子那只狗自己的颜色**（不是锤子颜色）。
+     * 从窝里再搬回椅子时按它把标记放回去（见 SetSelectChairId）。
+     *
+     * ⚠️ 必须是 Map 而不是单个 int：一关最多 3 对 ⇒ 最多 3 只抱锤子的狗，
+     * 它们完全可能先后被停进**不同**的狗窝。原先用 `hammerInRoomId: number` 只记得住
+     * 最后一个，前面那只的锤子会在窝里凭空消失、而且再也搬不回去（那一对直接死锁）。
+     */
+    public hammerInRoom: Map<number, number> = new Map<number, number>();
 
 
     public static get instance(): GameDataManager {
@@ -225,6 +279,13 @@ export class GameDataManager implements IManager {
             {
                 newChair.dogs[i] = oldChair.dogs[i];
             }
+            // 槽位标记也要一份独立副本：关卡表里没有这个字段（undefined），
+            // 那就先建成全 0，后面 GenerateCrystalPairs 直接往上写。
+            newChair.flags = new Array<number>(oldChair.dogs.length);
+            for (let i = 0; i < oldChair.dogs.length; i++)
+            {
+                newChair.flags[i] = oldChair.flags != null ? (oldChair.flags[i] || 0) : SlotFlag.Normal;
+            }
             newCfg.chairs[i] = newChair;
         }
         return newCfg;
@@ -283,6 +344,257 @@ export class GameDataManager implements IManager {
         this.curSelectRoomIdx = -1;
         this._levelHasDogs = !this.IsBoardClear();
         this.levelState = LevelState.Playing;
+    }
+
+    // ---------------------------------------------------------------- 冰晶玩法
+    //
+    // 一关的配对是**开局随机**的（不是关卡表里写死的），规则：
+    //   · 从第 CRYSTAL_START_LEVEL 关开始才生成；
+    //   · 盘面颜色总数 >3 / >5 / >7 时，分别随机 0~1 / 1~2 / 2~3 对；
+    //   · 每一对 = 一只被冰晶盖住的狗 + 一只抱锤子的狗：
+    //       锤子颜色 == 冰晶狗的颜色，而抱锤子那只狗**自己的颜色 ≠ 冰晶狗的颜色**；
+    //   · 所有对之间颜色互不重复（两两取色，天然不撞）；
+    //   · 两只狗**不能在同一根椅子上** —— 同一根椅子被冰晶挡住飞不了，
+    //     抱锤子那只就永远等不到"被消除"，这一对会死锁。
+
+    public GetSlotFlag(chairIdx: number, slotIdx: number): number
+    {
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null || chairIdx < 0 || chairIdx >= cfg.chairs.length) return SlotFlag.Normal;
+        let chair: LevelChairData = cfg.chairs[chairIdx];
+        if (chair == null || chair.flags == null) return SlotFlag.Normal;
+        return chair.flags[slotIdx] || SlotFlag.Normal;
+    }
+
+    public SetSlotFlag(chairIdx: number, slotIdx: number, flag: number): void
+    {
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null || chairIdx < 0 || chairIdx >= cfg.chairs.length) return;
+        let chair: LevelChairData = cfg.chairs[chairIdx];
+        if (chair == null) return;
+        if (chair.flags == null)
+        {
+            chair.flags = new Array<number>(chair.dogs.length);
+            for (let i = 0; i < chair.flags.length; i++) chair.flags[i] = SlotFlag.Normal;
+        }
+        chair.flags[slotIdx] = flag;
+    }
+
+    public IsSlotCrystal(chairIdx: number, slotIdx: number): boolean
+    {
+        return this.GetSlotFlag(chairIdx, slotIdx) == SlotFlag.Crystal;
+    }
+
+    public IsSlotHammer(chairIdx: number, slotIdx: number): boolean
+    {
+        return this.GetSlotFlag(chairIdx, slotIdx) == SlotFlag.Hammer;
+    }
+
+    /**
+     * 这根椅子上有没有还没被敲碎的冰晶。
+     * 有 ⇒ 整根椅子**不许飞向卡车**（"六个同色里有一个被盖住，整椅都不能消除"）。
+     */
+    public IsChairBlockedByCrystal(chairIdx: number): boolean
+    {
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null || chairIdx < 0 || chairIdx >= cfg.chairs.length) return false;
+        let chair: LevelChairData = cfg.chairs[chairIdx];
+        if (chair == null || chair.flags == null) return false;
+        for (let i = 0; i < chair.flags.length; i++)
+        {
+            if (chair.flags[i] == SlotFlag.Crystal) return true;
+        }
+        return false;
+    }
+
+    /** 这根椅子最顶上那只狗在哪个槽位（-1 = 空椅）。下标越大越靠上，见 SetSelectRoomId 的长注释 */
+    public GetTopDogSlot(chairIdx: number): number
+    {
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null || chairIdx < 0 || chairIdx >= cfg.chairs.length) return -1;
+        let ch: LevelChairData = cfg.chairs[chairIdx];
+        if (ch == null || ch.dogs == null) return -1;
+        for (let i = ch.dogs.length - 1; i >= 0; i--)
+        {
+            if (ch.dogs[i] > 0) return i;
+        }
+        return -1;
+    }
+
+    /** 这根椅子上抱锤子的狗在第几格（-1 = 没有） */
+    public GetHammerSlot(chairIdx: number): number
+    {
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null || chairIdx < 0 || chairIdx >= cfg.chairs.length) return -1;
+        let chair: LevelChairData = cfg.chairs[chairIdx];
+        if (chair == null || chair.flags == null) return -1;
+        for (let i = 0; i < chair.flags.length; i++)
+        {
+            if (chair.flags[i] == SlotFlag.Hammer) return i;
+        }
+        return -1;
+    }
+
+    /**
+     * 这一对里"抱锤子那只狗"现在在哪根椅子上（-1 = 不在任何椅子上，比如被停进了狗窝）。
+     *
+     * 只按 `holderColor` 找是不够的：同一颜色在一根椅子上可能有好几只，
+     * 真正的判据是**槽位标记**。配对本身只记了冰晶那一侧，锤子这一侧是会跟着狗
+     * 在椅子之间搬来搬去的（见 ChangeChairDogColor），所以这里现扫一遍标记。
+     */
+    public GetChairOfHolder(pair: CrystalPair): number
+    {
+        if (pair == null) return -1;
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null) return -1;
+        for (let i = 0; i < cfg.chairs.length; i++)
+        {
+            let ch: LevelChairData = cfg.chairs[i];
+            if (ch == null || ch.flags == null) continue;
+            for (let j = 0; j < ch.flags.length; j++)
+            {
+                if (ch.flags[j] != SlotFlag.Hammer) continue;
+                if (ch.dogs[j] == pair.holderColor) return i;
+            }
+        }
+        return -1;
+    }
+
+    /** 这个狗窝里停着的那只狗是不是抱着锤子（是 ⇒ 返回锤子颜色，否则 -1） */
+    public GetHammerColorInRoom(roomId: number): number
+    {
+        if (!this.hammerInRoom.has(roomId)) return -1;
+        let holderColor: number = this.hammerInRoom.get(roomId);
+        let pair: CrystalPair = this.GetUnbrokenPairByHolderColor(holderColor);
+        return pair != null ? pair.crystalColor : -1;
+    }
+
+    /** 清掉本关所有冰晶 / 锤子标记（换关时调） */
+    public ClearCrystalPairs(): void
+    {
+        this.crystalPairs = [];
+        this.hammerInRoom.clear();
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null) return;
+        for (let i = 0; i < cfg.chairs.length; i++)
+        {
+            let ch: LevelChairData = cfg.chairs[i];
+            if (ch.flags == null) continue;
+            for (let j = 0; j < ch.flags.length; j++) ch.flags[j] = SlotFlag.Normal;
+        }
+    }
+
+    /**
+     * 开局随机配对。**铺完盘之后**调（GameMainObj.start 里），读的是 `curLevelConfig`。
+     * 返回生成出来的对数，方便日志 / 测试。
+     */
+    public GenerateCrystalPairs(): number
+    {
+        this.ClearCrystalPairs();
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null) return 0;
+        if (this.curFightLevelId < GameDataManager.CRYSTAL_START_LEVEL) return 0;
+
+        // 1) 颜色 -> 这只颜色所有狗的位置
+        let spots: Map<number, { chair: number, slot: number }[]> = new Map();
+        for (let i = 0; i < cfg.chairs.length; i++)
+        {
+            let dogs: number[] = cfg.chairs[i].dogs;
+            for (let j = 0; j < dogs.length; j++)
+            {
+                if (dogs[j] <= 0) continue;
+                if (!spots.has(dogs[j])) spots.set(dogs[j], []);
+                spots.get(dogs[j]).push({ chair: i, slot: j });
+            }
+        }
+        let colors: number[] = Array.from(spots.keys());
+        let n: number = colors.length;
+
+        // 2) 颜色总数决定"这一关出几对"
+        let minPair: number = 0, maxPair: number = 0;
+        if (n > 7) { minPair = 2; maxPair = 3; }
+        else if (n > 5) { minPair = 1; maxPair = 2; }
+        else if (n > 3) { minPair = 0; maxPair = 1; }
+        else return 0;   // ≤3 色不出（第 5~14 关就是这一档）
+
+        let want: number = minPair + Math.floor(Math.random() * (maxPair - minPair + 1));
+        // 一对要吃掉两个颜色，别超过颜色总数的一半
+        let cap: number = Math.floor(n / 2);
+        if (want > cap) want = cap;
+        if (want <= 0) return 0;
+
+        // 3) 颜色洗一遍，两两取 ⇒ 天然满足"每对之间颜色不重复"
+        let pool: number[] = colors.slice();
+        for (let i = pool.length - 1; i > 0; i--)
+        {
+            let k: number = Math.floor(Math.random() * (i + 1));
+            let t: number = pool[i]; pool[i] = pool[k]; pool[k] = t;
+        }
+
+        let made: number = 0;
+        // ⚠️ 已经用掉的椅子。**冰晶椅和抱锤子椅都算**，而且跨对共享。
+        //
+        // 不共享会锁死，举个真实会发生的例子（两对）：
+        //   对A：冰晶在椅 X、锤子在椅 Y     对B：冰晶在椅 Y、锤子在椅 X
+        //   ⇒ X 被对A的冰晶挡着、飞不了，对B的锤子（在 X）永远等不到被消除；
+        //     Y 被对B的冰晶挡着、飞不了，对A的锤子（在 Y）也一样 ⇒ 两根椅子互锁，死局。
+        // 顺带也排掉了"同一根椅子上蹲着两只抱锤子的狗"（那种情况下
+        // `GetHammerSlot` 只能报一只，另一把锤子会被漏掉、那一对永远敲不碎）。
+        const usedChairs: Set<number> = new Set<number>();
+
+        for (let p = 0; p + 1 < pool.length && made < want; p += 2)
+        {
+            let crystalColor: number = pool[p];
+            let holderColor: number = pool[p + 1];
+
+            // 冰晶狗：这只颜色里、椅子还没被占用的任意一只
+            let cSpots = spots.get(crystalColor);
+            if (cSpots == null || cSpots.length <= 0) continue;
+            let cCand = cSpots.filter(s => !usedChairs.has(s.chair));
+            if (cCand.length <= 0) continue;
+            let cs = cCand[Math.floor(Math.random() * cCand.length)];
+
+            // 抱锤子的狗：椅子也不能已被占用（含 cs 自己那根）
+            let hSpots = spots.get(holderColor);
+            if (hSpots == null) continue;
+            let candidates = hSpots.filter(s => s.chair != cs.chair && !usedChairs.has(s.chair));
+            if (candidates.length <= 0) continue;
+            let hs = candidates[Math.floor(Math.random() * candidates.length)];
+
+            this.SetSlotFlag(cs.chair, cs.slot, SlotFlag.Crystal);
+            this.SetSlotFlag(hs.chair, hs.slot, SlotFlag.Hammer);
+            usedChairs.add(cs.chair);
+            usedChairs.add(hs.chair);
+
+            let pair: CrystalPair = new CrystalPair();
+            pair.crystalChair = cs.chair;
+            pair.crystalSlot = cs.slot;
+            pair.crystalColor = crystalColor;
+            pair.holderColor = holderColor;
+            this.crystalPairs.push(pair);
+            made++;
+        }
+        return made;
+    }
+
+    /** 按"抱锤子那只狗的颜色"找还没被敲碎的那一对 */
+    public GetUnbrokenPairByHolderColor(holderColor: number): CrystalPair
+    {
+        for (let i = 0; i < this.crystalPairs.length; i++)
+        {
+            let p: CrystalPair = this.crystalPairs[i];
+            if (!p.broken && p.holderColor == holderColor) return p;
+        }
+        return null;
+    }
+
+    /** 敲碎：把冰晶格恢复成普通格，并标记这一对已经完成（幂等） */
+    public BreakCrystal(pair: CrystalPair): void
+    {
+        if (pair == null || pair.broken) return;
+        pair.broken = true;
+        if (this.IsSlotCrystal(pair.crystalChair, pair.crystalSlot))
+            this.SetSlotFlag(pair.crystalChair, pair.crystalSlot, SlotFlag.Normal);
     }
 
     /**
@@ -358,14 +670,18 @@ export class GameDataManager implements IManager {
         const cfg: LevelConfig = this.curLevelConfig;
         if (cfg == null || cfg.chairs == null) return false;
 
-        // 1) 收集所有占用槽位
+        // 1) 收集所有占用槽位。
+        //    ⚠️ 带冰晶 / 锤子的格子**不参与**洗牌：冰晶狗本身不能动，颜色一变
+        //    "锤子该配哪只狗"就说不清了；锤子跟着狗的颜色走，换色等于换了把锤子。
         const slots: { chair: number, slot: number, color: number }[] = [];
         for (let i = 0; i < cfg.chairs.length; i++)
         {
             const dogs: number[] = cfg.chairs[i].dogs;
             for (let j = 0; j < dogs.length; j++)
             {
-                if (dogs[j] > 0) slots.push({ chair: i, slot: j, color: dogs[j] });
+                if (dogs[j] <= 0) continue;
+                if (this.GetSlotFlag(i, j) != SlotFlag.Normal) continue;
+                slots.push({ chair: i, slot: j, color: dogs[j] });
             }
         }
         if (slots.length < 2) return false;
@@ -661,6 +977,12 @@ export class GameDataManager implements IManager {
                 if ((i == 0 && chairData.dogs[i] <= 0) || (i > 0 && chairData.dogs[i] <= 0 && chairData.dogs[i-1] == roomNode.sleepDogColor))
                 {
                     chairData.dogs[i] = roomNode.sleepDogColor;
+                    // 从窝里搬回椅子的这只如果抱着锤子，标记也要放回这个槽位
+                    if (this.hammerInRoom.has(this.curSelectRoomIdx))
+                    {
+                        this.SetSlotFlag(chairId, i, SlotFlag.Hammer);
+                        this.hammerInRoom.delete(this.curSelectRoomIdx);
+                    }
                     roomNode.CreateWithColor(DogColor.None);
                     this.gameMainObj.FlyToSameColorChairFromRoomId(this.curSelectRoomIdx, chairId);
                     this.curSelectRoomIdx = -1;
@@ -700,6 +1022,13 @@ export class GameDataManager implements IManager {
                 this.gameMainObj.FlyToSameColorChair(this.curSelectChairIdx, chairId, () => {
                     this.CheckDogFlyToCar();
                 });
+                // 搬完之后按数据重画覆盖层：锤子的槽位跟着狗换了，画面上得跟过去。
+                // ⚠️ 用延迟而不是上面那个回调 —— 回调只在 i==0 那只落地时触发，
+                //    而抱锤子的可能是 i>0 的某一只，它落地更晚（飞行时长 = dis/4000 各不相同）。
+                //    早画的话，后落地那只的 `CreateDog` 会 ClearOverlays 把锤子又擦掉。
+                this.gameMainObj.scheduleOnce(() => {
+                    this.gameMainObj.RefreshCrystalOverlays();
+                }, 0.8);
                 this.curSelectChairIdx = -1;
             }
             else
@@ -731,8 +1060,24 @@ export class GameDataManager implements IManager {
                 // "有椅子被选中"。上面 SetSelectChairId 用的也是 `< 0` 判空，两处要对齐。
                 if (this.curSelectChairIdx >= 0) //飞到room
                 {
-                    this.gameMainObj.FlyToRoom(this.curSelectChairIdx, roomId);
-                    let chairData = this.curLevelConfig.chairs[this.curSelectChairIdx];
+                    const fromChairId: number = this.curSelectChairIdx;
+
+                    // ⚠️ 冰晶狗**不能进狗窝**。搬进狗窝也是"移动"，而冰晶狗不许移动。
+                    //
+                    // 这条判据不能省：椅子顶上压着冰晶时，玩家仍然**能选中**这根椅子
+                    // （PlayHoverUp 会拒绝抬起它，但 curSelectChairIdx 已经置上了），
+                    // 这时再点狗窝就会把冰晶狗送走 —— 冰晶跟着狗进了窝，那一对
+                    // 再也敲不碎，那根椅子永远飞不了（而且窝里的冰晶没有任何 UI 表示）。
+                    const topSlot: number = this.GetTopDogSlot(fromChairId);
+                    if (topSlot >= 0 && this.IsSlotCrystal(fromChairId, topSlot))
+                        return;
+
+                    // 回调在狗真的落进窝里之后才跑 —— 那时狗窝的 `sleepDogColor` 才是新的，
+                    // 覆盖层重画才不会把锤子画到一个还空着的窝上。
+                    this.gameMainObj.FlyToRoom(fromChairId, roomId, () => {
+                        this.gameMainObj.RefreshCrystalOverlays();
+                    });
+                    let chairData = this.curLevelConfig.chairs[fromChairId];
                     // ⚠️ 从**顶部**摘一只，不是从底部 —— 循环方向必须是末尾往 0 扫。
                     //
                     // 盘面数据的约定是「下标越大越靠上」：下标 0 = 椅底，末尾 = 椅顶。
@@ -747,13 +1092,19 @@ export class GameDataManager implements IManager {
                     // `dogs[0] == 0` 这种非法盘面（椅子底下空着、上面还压着狗），
                     // 之后 IsCanChange / ChangeChairDogColor 会把它当成"底部有空位"
                     // 一路错下去（R1：椅子不许有空洞）。
-                    for (let i = chairData.dogs.length - 1; i >= 0; i--)
+                    if (topSlot >= 0)
                     {
-                        if (chairData.dogs[i] > 0)
-                        {
-                            chairData.dogs[i] = 0;
-                            break;
-                        }
+                        // ⚠️ 标记必须**跟着这只狗一起走**。原先只清了 dogs[i]，
+                        // flags[i] 留在原地 —— 那个槽位从此带着一个"幽灵锤子"：
+                        // 下一只搬进来的狗会凭空抱起锤子（`GetUnbrokenPairByHolderColor`
+                        // 按颜色找不到对 ⇒ 画面上又没有），而真正抱锤子的那只已经进了窝、
+                        // 窝里却没有任何记录 ⇒ 这一对永远敲不碎，冰晶那根椅子永远飞不了。
+                        const movedColor: number = chairData.dogs[topSlot];
+                        const movedFlag: number = this.GetSlotFlag(fromChairId, topSlot);
+                        chairData.dogs[topSlot] = 0;
+                        this.SetSlotFlag(fromChairId, topSlot, SlotFlag.Normal);
+                        if (movedFlag == SlotFlag.Hammer)
+                            this.hammerInRoom.set(roomId, movedColor);
                     }
                     this.curSelectChairIdx = -1;
                 }
@@ -804,14 +1155,32 @@ export class GameDataManager implements IManager {
             }
             if (isSameColor && defaultColor != 0)
             { 
+                // 冰晶还没敲碎 ⇒ 这根椅子**不许飞**。
+                // 这就是"六个同色狗狗站在一个桌子上、有一个被水晶盖住，整椅都不能消除"。
+                if (this.IsChairBlockedByCrystal(i)) continue;
+
+                // 这一椅里有没有抱锤子的狗（最多一只：一对里只有一个锤子）
+                const hammerSlot: number = this.GetHammerSlot(i);
+                const hammerColor: number = hammerSlot >= 0 ? chairData.dogs[hammerSlot] : 0;
+
                 let isOk:Boolean = this.gameMainObj.FlyToCar(defaultColor, i,()=>{
                     this.CheckDogFlyToCar();
                 }); 
                 if (isOk)
                 {
+                    // 抱锤子的狗被消除 ⇒ 锤子飞向同色的冰晶狗、把它砸开。
+                    // 必须在**清数据之前**把槽位号交给界面：清完 dogs/flags 就找不到这只狗了。
+                    if (hammerSlot >= 0)
+                    {
+                        const pair: CrystalPair = this.GetUnbrokenPairByHolderColor(hammerColor);
+                        if (pair != null) this.gameMainObj.PlayHammerBreakFromChair(i, hammerSlot);
+                    }
                     for (let k = 0; k < chairData.dogs.length; k++)
                     {
                         chairData.dogs[k] = 0;
+                        // 标记也要一起清：椅子虽然被关掉了，但 flags 留着就是脏数据
+                        // （换关时 ClearCrystalPairs 才清，而这根椅子的槽位可能已被下一关复用）
+                        this.SetSlotFlag(i, k, SlotFlag.Normal);
                     }
                     flew = true;
                     break;
@@ -835,22 +1204,12 @@ export class GameDataManager implements IManager {
         let fromChair:LevelChairData = this.curLevelConfig.chairs[fromIndx];
         let toChair:LevelChairData = this.curLevelConfig.chairs[toIndex];
         let toColor = 0;
-        let reciveNum = 0;
-        let sendNum = 0
         for (let i = toChair.dogs.length - 1; i >= 0; i--)
         {
             if (toChair.dogs[i] > 0)
             {
                 toColor = toChair.dogs[i];
                 break;
-            }
-        }
-
-        for (let i = toChair.dogs.length - 1; i >= 0; i--)
-        {
-            if (toChair.dogs[i] == 0)
-            {
-                reciveNum++;
             }
         }
         if (toColor == 0)
@@ -865,33 +1224,34 @@ export class GameDataManager implements IManager {
             }
         }
 
+        // 源椅：从顶往下取"同色、且不是冰晶"的连续一段。
+        // 遇到冰晶就停 —— 冰晶狗搬不动，它下面的狗也就出不来。
+        const sendSlots: number[] = [];
         for (let i = fromChair.dogs.length - 1; i >= 0; i--)
         {
-            if (fromChair.dogs[i] > 0)
-            {
-                if (toColor == fromChair.dogs[i])
-                    sendNum++;
-                else
-                    break;
-            }
+            if (fromChair.dogs[i] <= 0) continue;
+            if (fromChair.dogs[i] != toColor) break;
+            if (this.GetSlotFlag(fromIndx, i) == SlotFlag.Crystal) break;
+            sendSlots.push(i);
         }
-        let fitNum = sendNum < reciveNum ? sendNum : reciveNum;
+        // 目标椅：从下往上数空位
+        const holes: number[] = [];
         for (let i = 0; i < toChair.dogs.length; i++)
         {
-            if (toChair.dogs[i] <= 0 && fitNum > 0)
-            {
-                toChair.dogs[i] = toColor;
-                fitNum--;
-            }
+            if (toChair.dogs[i] <= 0) holes.push(i);
         }
-        fitNum = sendNum < reciveNum ? sendNum : reciveNum;
-        for (let i = fromChair.dogs.length - 1; i >= 0; i--)
+
+        // ⚠️ 标记（冰晶 / 锤子）必须**跟着槽位一起搬**：
+        // 抱锤子的狗被搬走，锤子得跟过去；冰晶狗不会出现在 sendSlots 里（上面已经 break）。
+        const fitNum: number = Math.min(sendSlots.length, holes.length);
+        for (let k = 0; k < fitNum; k++)
         {
-            if (fromChair.dogs[i] == toColor && fitNum > 0)
-            {
-                fromChair.dogs[i] = 0;
-                fitNum--;
-            }
+            const src: number = sendSlots[k];
+            const dst: number = holes[k];
+            toChair.dogs[dst] = fromChair.dogs[src];
+            this.SetSlotFlag(toIndex, dst, this.GetSlotFlag(fromIndx, src));
+            fromChair.dogs[src] = 0;
+            this.SetSlotFlag(fromIndx, src, SlotFlag.Normal);
         }
     }
 
@@ -916,11 +1276,13 @@ export class GameDataManager implements IManager {
         let toChair:LevelChairData = this.curLevelConfig.chairs[toIndex];
         let fromColor = 0;
         let toColor = 0;
+        let fromTopSlot = -1;
         for (let i = fromChair.dogs.length - 1; i >= 0; i--)
         {
             if (fromChair.dogs[i] > 0)
             {
                 fromColor = fromChair.dogs[i];
+                fromTopSlot = i;
                 break;
             }
         }
@@ -935,6 +1297,12 @@ export class GameDataManager implements IManager {
 
         // ① 源椅不能是空的 —— 没有狗可搬
         if (fromColor == 0)
+            return false;
+
+        // ①-b 椅子顶上压着冰晶 ⇒ 整根椅子搬不动。
+        //     注意判的是**最顶上那只**：冰晶狗下面的狗本来也搬不出来（被它压着），
+        //     所以只要顶上是冰晶，这一手就完全走不了。
+        if (fromTopSlot >= 0 && this.IsSlotCrystal(fromIndx, fromTopSlot))
             return false;
 
         // ② 目标椅至少要有 1 个空位。

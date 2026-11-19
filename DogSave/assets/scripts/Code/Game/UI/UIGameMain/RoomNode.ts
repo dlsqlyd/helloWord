@@ -23,6 +23,14 @@ export class RoomNode extends Component {
     @property(Sprite)
     public dogIcon: Sprite;
 
+    /**
+     * 抱锤子的狗被停进狗窝时，锤子跟着进来（`Dog` 节点下的 `hammer` 子节点）。
+     * 只影响观感 —— "锤子在哪"的权威数据是 `GameDataManager.hammerInRoom`
+     * （狗窝序号 -> 抱锤子那只狗的颜色）。
+     */
+    @property(Sprite)
+    public hammerIcon: Sprite;
+
     @property(DogNode)
     public dogNode: DogNode;
     
@@ -79,6 +87,8 @@ export class RoomNode extends Component {
     CreateWithColor(color:DogColor) 
     {
         this.sleepDogColor = color;
+        // 狗窝里的狗换了（或被清空）⇒ 锤子不能留下
+        this.HideHammer();
         // 赋值，不是判等。同 DoorNode.CreateWithColor 那处：原先的 `==` 是空语句，
         // roomState 停在旧值，下面 adsBtn / RfreshDogSprite() 全都读到过期状态 ——
         // 结果是狗窝永远不显示 dogface_sad_<色>，一直停在 battle_alpha。
@@ -144,5 +154,21 @@ export class RoomNode extends Component {
     PlayReciveAnim() 
     {
         
+    }
+
+    // ------------------------------------------------------------ 冰晶玩法的锤子
+    /** `color` 是**被冻住那只狗**的颜色（= 锤子的颜色），不是窝里这只狗的颜色 */
+    public async ShowHammer(color: DogColor): Promise<void>
+    {
+        if (this.hammerIcon == null || this.hammerIcon.node == null) return;
+        const sf = await DogNode.LoadHammerFrame(color);
+        if (this.hammerIcon == null || this.hammerIcon.node == null) return;
+        if (sf != null) this.hammerIcon.spriteFrame = sf;
+        this.hammerIcon.node.active = sf != null;
+    }
+
+    public HideHammer(): void
+    {
+        if (this.hammerIcon != null && this.hammerIcon.node != null) this.hammerIcon.node.active = false;
     }
 }

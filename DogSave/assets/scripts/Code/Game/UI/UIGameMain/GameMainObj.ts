@@ -1,6 +1,6 @@
-import { _decorator, Button, Component, find, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
+import { _decorator, Button, Component, find, Label, Node, Sprite, SpriteFrame, Tween, tween, UIOpacity, UITransform, Vec3 } from 'cc';
 import { $ } from '../../../../../../extensions/taowu-editor/source/panel';
-import { BattleMode, GameDataManager, ItemID, LevelConfig, LevelState } from '../../GameDataManager';
+import { BattleMode, CrystalPair, GameDataManager, ItemID, LevelConfig, LevelState, SlotFlag } from '../../GameDataManager';
 import { ChairNode } from './ChairNode';
 import { DogColor, DogNode, DogState, DOG_SFX_HAPPY } from './DogNode';
 import { DoorNode, DoorState } from './DoorNode';
@@ -208,6 +208,10 @@ export class GameMainObj extends Component {
         // 所以这里同时也是"重开一关时把倒计时重置"的地方。
         GameDataManager.instance.StartLevel();
         this.RefreshTimeText();
+        // ⚠️ 必须在**铺完盘之后**：GenerateCrystalPairs 读的是 curLevelConfig.chairs[*].dogs，
+        //    而 flags 数组是这里现建的（关卡表里没有这个字段，见 LevelChairData.flags）。
+        //    放在 RefreshAllSlot 之前也不会崩，只是会在还没建好的 flags 上写标记。
+        this.ApplyCrystalPairs();
         for (let i = 0; i < this.UsingdDogs.length; i++)
         {
             let dog = this.UsingdDogs[i];
@@ -566,6 +570,189 @@ export class GameMainObj extends Component {
 
     private _tipsLabel: Label = null;
 
+    // ------------------------------------------------------------ 冰晶 / 锤子（第 5 关起）
+    /**
+     * 开局生成配对并套上覆盖层。`start()` 里**铺完盘之后**调。
+     *
+     * 数据（谁被冻住、谁抱锤子）在 `GameDataManager.flags` 里，这里只负责画。
+     * 少于 4 种颜色的关卡不会出对（见 GenerateCrystalPairs 的分档），
+     * 所以第 5~14 关调用进来也是空转 —— 这是规则本身决定的，不是没接上。
+     */
+    public ApplyCrystalPairs(): void
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null) return;
+        const n: number = gdm.GenerateCrystalPairs();
+        if (n > 0)
+        {
+            const desc: string = gdm.crystalPairs
+                .map(p => `冻${p.crystalColor}(椅${p.crystalChair})/锤${p.holderColor}(椅${gdm.GetChairOfHolder(p)})`)
+                .join(' ');
+            console.log(`[Crystal] 第${gdm.curFightLevelId}关生成 ${n} 对：${desc}`);
+        }
+        this.RefreshCrystalOverlays();
+    }
+
+    /**
+     * 按数据把冰晶 / 锤子覆盖层重画一遍。**幂等**，随时可以调 ——
+     * 搬狗、进狗窝、破冰之后都靠它把画面对齐（数据永远是权威）。
+     */
+    public RefreshCrystalOverlays(): void
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null || gdm.curLevelConfig == null) return;
+
+        for (let i = 0; i < this.chairNodes.length; i++)
+        {
+            const chairNode: ChairNode = this.chairNodes[i];
+            if (chairNode == null) continue;
+            const chairId: number = chairNode.chairId;
+            for (let j = 0; j < chairNode.sortDog.length; j++)
+            {
+                const dog: DogNode = chairNode.sortDog[j];
+                if (dog == null) continue;
+                const hasDog: boolean = dog.DogColor > DogColor.None;
+                const flag: number = gdm.GetSlotFlag(chairId, j);
+                dog.ShowCrystal(hasDog && flag == SlotFlag.Crystal);
+
+                if (hasDog && flag == SlotFlag.Hammer)
+                {
+                    const pair: CrystalPair = gdm.GetUnbrokenPairByHolderColor(dog.DogColor);
+                    if (pair != null) dog.ShowHammer(pair.crystalColor);
+                    else dog.HideHammer();
+                }
+                else dog.HideHammer();
+            }
+        }
+
+        // 锤子被停进狗窝的那段时间，锤子画在窝上
+        for (let i = 0; i < this.roomNodes.length; i++)
+        {
+            const room: RoomNode = this.roomNodes[i];
+            if (room == null) continue;
+            const hammerColor: number = gdm.GetHammerColorInRoom(room.roomIndex);
+            if (hammerColor >= 0 && room.sleepDogColor > DogColor.None)
+            {
+                room.ShowHammer(hammerColor);
+            }
+            else room.HideHammer();
+        }
+    }
+
+    private GetDogNodeBySlot(chairId: number, slot: number): DogNode
+    {
+        const chairNode: ChairNode = this.GetChairNodeByChairId(chairId);
+        if (chairNode == null) return null;
+        if (slot < 0 || slot >= chairNode.sortDog.length) return null;
+        return chairNode.sortDog[slot];
+    }
+
+    /**
+     * 某一根椅子上、某个槽位的狗被消除之后，把它的锤子甩出去砸冰晶。
+     *
+     * 由 `GameDataManager.CheckDogFlyToCar()` 在 `FlyToCar` 返回 true **之后**调，
+     * 而且必须赶在清 `dogs / flags` 之前 —— 那只狗一旦从数据里消失，
+     * 这里就再也算不出它的世界坐标了。
+     */
+    public PlayHammerBreakFromChair(chairId: number, slot: number): void
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null) return;
+        const dog: DogNode = this.GetDogNodeBySlot(chairId, slot);
+        if (dog == null || dog.DogColor <= DogColor.None) return;
+
+        const pair: CrystalPair = gdm.GetUnbrokenPairByHolderColor(dog.DogColor);
+        if (pair == null) return;
+
+        // 世界坐标必须在狗被派去飞车门**之前**取（FlyToCar 里 0.3s 后就起飞了）
+        const fromWorld: Vec3 = gdm.LocalToWorld(dog.node.parent, dog.node.position);
+        // 狗身上那把锤子立刻收掉，免得"飞出去的锤子"和"狗身上还挂着一把"同屏
+        dog.HideHammer();
+        this.PlayHammerBreak(pair, fromWorld);
+    }
+
+    /**
+     * 抱锤子的狗被消除（跟着椅子飞向卡车）之后：锤子从原地飞向冰晶狗，砸碎冰晶。
+     *
+     * 用一个**临时节点**当锤子，而不是复用狗身上的那个 —— 那只狗正在飞、马上要被
+     * `chairNode.node.active = false` 一起关掉，锤子挂在它身上会跟着消失。
+     */
+    private async PlayHammerBreak(pair: CrystalPair, fromWorld: Vec3): Promise<void>
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null || pair == null || pair.broken) return;
+
+        const crystalDog: DogNode = this.GetDogNodeBySlot(pair.crystalChair, pair.crystalSlot);
+        const sf: SpriteFrame = await DogNode.LoadHammerFrame(pair.crystalColor);
+        if (crystalDog == null || !crystalDog.node.active || sf == null)
+        {
+            // 冰晶狗不在了（理论上不该发生）也别把这一对卡住：直接按已破处理
+            gdm.BreakCrystal(pair);
+            this.RefreshCrystalOverlays();
+            return;
+        }
+
+        const fly: Node = new Node("hammerFly");
+        fly.layer = this.node.layer;
+        this.node.addChild(fly);
+        fly.setSiblingIndex(this.node.children.length - 1);
+        const ut: UITransform = fly.addComponent(UITransform);
+        // 与 DogNode.prefab 里 hammer 覆盖层的尺寸一致（84×84，见 ice_src/add_overlay_nodes.py）
+        ut.setContentSize(84, 84);
+        const sp: Sprite = fly.addComponent(Sprite);
+        sp.sizeMode = Sprite.SizeMode.CUSTOM;
+        sp.spriteFrame = sf;
+
+        const from: Vec3 = gdm.WorldToLocal(this.node, fromWorld);
+        const toWorld: Vec3 = gdm.LocalToWorld(crystalDog.node.parent, crystalDog.node.position);
+        const to: Vec3 = gdm.WorldToLocal(this.node, toWorld);
+        fly.setPosition(from);
+
+        // 抛物线：先抬到两点上方，再砸下去
+        const mid: Vec3 = new Vec3((from.x + to.x) / 2, Math.max(from.y, to.y) + 90, 0);
+        tween(fly)
+            .to(0.22, { position: mid, eulerAngles: new Vec3(0, 0, 160) }, { easing: 'sineOut' })
+            .to(0.18, { position: to, eulerAngles: new Vec3(0, 0, 340) }, { easing: 'sineIn' })
+            .call(() => {
+                fly.destroy();
+                gdm.BreakCrystal(pair);
+                this.PlayCrystalBreak(crystalDog);
+            })
+            .start();
+    }
+
+    /** 冰晶碎裂：弹一下 + 淡出，然后按数据重画（这时冰晶格已经恢复成普通格） */
+    private PlayCrystalBreak(dog: DogNode): void
+    {
+        const c: Sprite = dog != null ? dog.crystalIcon : null;
+        const n: Node = c != null ? c.node : null;
+        if (n == null)
+        {
+            this.RefreshCrystalOverlays();
+            return;
+        }
+        let op: UIOpacity = n.getComponent(UIOpacity);
+        if (op == null) op = n.addComponent(UIOpacity);
+        op.opacity = 255;
+        n.setScale(1, 1, 1);
+
+        Tween.stopAllByTarget(n);
+        Tween.stopAllByTarget(op);
+        tween(n)
+            .to(0.08, { scale: new Vec3(1.2, 1.2, 1) }, { easing: 'backOut' })
+            .to(0.16, { scale: new Vec3(1.04, 1.04, 1) })
+            .start();
+        tween(op)
+            .to(0.24, { opacity: 0 })
+            .call(() => {
+                n.active = false;
+                n.setScale(1, 1, 1);
+                op.opacity = 255;
+                this.RefreshCrystalOverlays();
+            })
+            .start();
+    }
+
     PlayHoverUpByRoomId(roomId:number) 
     {
         let roomNode = this.GetRoomNode(roomId);
@@ -592,6 +779,10 @@ export class GameMainObj extends Component {
         let firstColor = DogColor.None;
         for (let i = len - 1; i >= 0; i--)
         {
+            // 被冰晶封住的那只**抬不起来** —— 它下面压着的狗自然也出不来。
+            // 少了这一句，玩家会看到冰晶狗连同冰晶一起飘在半空（而 IsCanChange
+            // 又拒绝这次搬动），看起来像"点了没反应 + 一只浮空的狗"。
+            if (GameDataManager.instance.IsSlotCrystal(chairId, i)) break;
             let dogNode = chairNode.sortDog[i];
             if (dogNode.DogState == DogState.None)
                 continue;
@@ -707,6 +898,8 @@ export class GameMainObj extends Component {
                 this.PutAnimEndDog(animDog);
                 GameDataManager.instance.isCanClick = true;
                 roomNode.CreateWithColor(DogColor.None);
+                // 窝里那只（可能抱着锤子）刚落到椅子上 —— 按数据把覆盖层重画一遍
+                this.RefreshCrystalOverlays();
             });   
         }
     }
@@ -883,7 +1076,7 @@ export class GameMainObj extends Component {
     }
 
     //飞到任意狗窝
-    FlyToRoom(fromChairId:number, roomid:number)
+    FlyToRoom(fromChairId:number, roomid:number, callback?: () => void)
     {
         GameDataManager.instance.isCanClick = false;
         let fromChairNode:ChairNode = this.GetChairNodeByChairId(fromChairId);   
@@ -931,6 +1124,8 @@ export class GameMainObj extends Component {
                         GameDataManager.instance.isCanClick = true;
                         sendNode[i].DogColor = DogColor.None;
                         sendNode[i].DogState = DogState.None;
+                        // 狗（可能抱着锤子）已经落进窝里，窝的 sleepDogColor 此刻才是新的
+                        if (callback != null) callback();
                     });
                 }
                 else

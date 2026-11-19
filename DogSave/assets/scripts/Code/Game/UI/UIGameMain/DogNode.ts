@@ -1,4 +1,4 @@
-import { _decorator, Animation, AnimationState, Button, Component, Label, Node, ParticleSystem2D, Sprite, Tween, Vec2, Vec3, tween } from 'cc';
+import { _decorator, Animation, AnimationState, Button, Component, Label, Node, ParticleSystem2D, Sprite, SpriteFrame, Tween, Vec2, Vec3, tween } from 'cc';
 import { ImageLoaderManager } from '../../../Module/Resource/ImageLoaderManager';
 import { GameDataManager } from '../../GameDataManager';
 import { DoorNode } from './DoorNode';
@@ -80,6 +80,25 @@ export class DogNode extends Component {
       
     @property(Sprite)
     public dogIcon: Sprite;
+
+    /**
+     * 冰晶覆盖层（`DogNode.prefab` 里 `dog` 之后的 `crystal` 子节点）。
+     *
+     * 玩法上表示"这只狗被封住了"：不能移动、不能被消除，也不会被同色椅子带走。
+     * 冰晶是**半透明**的 —— 玩家要能透过去看出这只狗的颜色，才知道该等哪把锤子。
+     */
+    @property(Sprite)
+    public crystalIcon: Sprite = null;
+
+    /**
+     * 锤子覆盖层（`hammer` 子节点）。
+     *
+     * 谁抱着锤子，锤子的颜色就是**被冻住那只狗**的颜色 —— 注意不是这只狗自己的颜色。
+     * 这只狗被消除（跟着椅子飞向卡车）时，锤子会飞出去砸碎同色的冰晶，见
+     * `GameMainObj.PlayHammerBreak`。
+     */
+    @property(Sprite)
+    public hammerIcon: Sprite = null;
     
     public DogState = DogState.None;
     public DogColor = DogColor.None;
@@ -520,6 +539,9 @@ export class DogNode extends Component {
     public async CreateDog(color: DogColor, bornDelay: number = 0)
     {
         this.DogColor = color;
+        // 槽位是被复用的：上一关的水晶 / 锤子不能跟过来（覆盖层由 GameDataManager
+        // 在铺完盘之后重新套，见 GameMainObj.ApplyCrystalPairs）
+        this.ClearOverlays();
         if (color > DogColor.None)
         {
             // 先置状态再刷贴图 —— RfreshDogSprite 会据此选伤感脸
@@ -574,6 +596,71 @@ export class DogNode extends Component {
         } 
         var sprite = await ImageLoaderManager.instance.loadSpriteAsync(imgPath + icon);      
         this.dogIcon.spriteFrame = sprite;
+    }
+
+    // ------------------------------------------------------------------
+    // 冰晶 / 锤子覆盖层（第 5 关起的新玩法）
+    //
+    // 两个覆盖层都是本节点的子节点、排在 `dog` 之后 ⇒ 渲染在狗狗上面。
+    // 状态本身**不存在这里** —— 谁被冻住、谁抱锤子由 `GameDataManager` 的
+    // `LevelChairData.flags` 记着，这里只负责画。
+    // ------------------------------------------------------------------
+
+    /** DogColor -> 图集里的文件名后缀 */
+    private static readonly HAMMER_SUFFIX: { [k: number]: string } = {
+        [DogColor.Orange]: "orange",
+        [DogColor.Pink]: "pink",
+        [DogColor.Blue]: "blue",
+        [DogColor.Green]: "green",
+        [DogColor.Purple]: "purple",
+        [DogColor.Yellow]: "yellow",
+        [DogColor.Mint]: "mint",
+        [DogColor.Grey]: "grey",
+    };
+
+    /** 8 张锤子图只加载一次，之后跨关复用（同一帧里 3 把锤子也不会重复读盘） */
+    private static _hammerFrames: Map<number, SpriteFrame> = new Map<number, SpriteFrame>();
+
+    public static async LoadHammerFrame(color: DogColor): Promise<SpriteFrame>
+    {
+        if (DogNode._hammerFrames.has(color)) return DogNode._hammerFrames.get(color);
+        const suffix: string = DogNode.HAMMER_SUFFIX[color];
+        if (suffix == null) return null;
+        const sf: SpriteFrame = await ImageLoaderManager.instance.loadSpriteAsync("ui/uigamemain/atlas/hammer_" + suffix);
+        if (sf != null) DogNode._hammerFrames.set(color, sf);
+        return sf;
+    }
+
+    public ShowCrystal(show: boolean): void
+    {
+        if (this.crystalIcon == null || this.crystalIcon.node == null) return;
+        this.crystalIcon.node.active = show;
+    }
+
+    /**
+     * 挂上锤子。`color` 是**被冻住那只狗**的颜色（= 锤子的颜色），
+     * 不是抱锤子这只狗自己的颜色 —— 调用方别传错。
+     */
+    public async ShowHammer(color: DogColor): Promise<void>
+    {
+        if (this.hammerIcon == null || this.hammerIcon.node == null) return;
+        const sf: SpriteFrame = await DogNode.LoadHammerFrame(color);
+        // 等图期间这只狗可能已经被复用（换关 / 换色）—— 再判一次
+        if (this.hammerIcon == null || this.hammerIcon.node == null) return;
+        if (sf != null) this.hammerIcon.spriteFrame = sf;
+        this.hammerIcon.node.active = sf != null;
+    }
+
+    public HideHammer(): void
+    {
+        if (this.hammerIcon != null && this.hammerIcon.node != null) this.hammerIcon.node.active = false;
+    }
+
+    /** 换关 / 槽位被复用 / 破冰之后，把两个覆盖层一起收掉 */
+    public ClearOverlays(): void
+    {
+        this.ShowCrystal(false);
+        this.HideHammer();
     }
 
 
