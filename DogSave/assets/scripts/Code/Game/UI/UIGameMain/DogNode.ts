@@ -131,6 +131,13 @@ export class DogNode extends Component {
     private _oneShot: string = '';
 
     /**
+     * 是否被冰晶冻住。冻住期间**不呼吸**（冰里还在喘气很怪），姿态也锁死在原位。
+     *
+     * 这个标记只是视觉开关，权威状态在 `GameDataManager.flags`（见 `ShowCrystal`）。
+     */
+    private _frozen: boolean = false;
+
+    /**
      * 递增令牌。延迟回调（出生错峰）和 tween 回调都靠它判断自己是否已过期 ——
      * 狗被复用到别的颜色/状态时，旧回调必须安静退出，不能回头再抢轨道。
      */
@@ -232,6 +239,11 @@ export class DogNode extends Component {
 
     public PlayBreathe() {
         if (!this._anim) return;
+        // 冻住的狗不呼吸。解冻时由 `_setFrozen` 立刻把呼吸接回来 ——
+        // 所以这里直接返回是安全的，不会出现"解冻后整只狗僵着"。
+        // 顺手 `_freezePose()` 一次：出生 / 下落这类一次性动作刚播完时也会走到这儿，
+        // 那一下要把姿态收回原位，否则冰里的狗会停在动作的最后一帧。
+        if (this._frozen) { this._freezePose(); return; }
         this._oneShot = '';
         this._playOnly(CLIP_BREATHE);
         const st = this._anim.getState(CLIP_BREATHE);
@@ -633,8 +645,55 @@ export class DogNode extends Component {
 
     public ShowCrystal(show: boolean): void
     {
-        if (this.crystalIcon == null || this.crystalIcon.node == null) return;
-        this.crystalIcon.node.active = show;
+        if (this.crystalIcon != null && this.crystalIcon.node != null)
+            this.crystalIcon.node.active = show;
+        // 冰晶在 ⇒ 冻住：停呼吸、姿态锁死。冰晶碎掉 ⇒ 解冻并**立刻**接回呼吸。
+        // 这个函数被 `RefreshCrystalOverlays` 反复调用（每次落子/进窝都会重刷一遍），
+        // 所以 `_setFrozen` 必须是幂等的，不能每次都重启一次呼吸。
+        this._setFrozen(show, true);
+    }
+
+    /**
+     * 冻结 / 解冻。
+     *
+     * @param frozen        目标状态
+     * @param resumeBreathe 解冻时是否立刻起呼吸（换关复用槽位时传 false ——
+     *                      那一刻马上要播 born，不该先抢一次呼吸的轨道）
+     */
+    private _setFrozen(frozen: boolean, resumeBreathe: boolean): void
+    {
+        if (frozen === this._frozen) return;
+        this._frozen = frozen;
+        if (frozen) this._freezePose();
+        else if (resumeBreathe && this.DogState === DogState.Idle) this.PlayBreathe();
+    }
+
+    /**
+     * 冻住的那一帧：把呼吸循环停掉，并把姿态收回原位。
+     *
+     * 为什么要显式收姿态：`breathe.anim` 有一条 `dog/scale` 轨道（1.0 → 1.06 → 1.0，循环），
+     * 只 `state.stop()` 的话，缩放会**停在停下来的那一帧**（可能是 1.06），
+     * 冰晶里的狗就永远是"胀着"的。position / eulerAngles 同理。
+     */
+    private _freezePose(): void
+    {
+        if (!this._anim) return;
+        const st = this._anim.getState(CLIP_BREATHE);
+        if (st != null) st.stop();
+        // 一次性动作（出生 / 悬浮 / 下落）正在播时不要打断它，只停呼吸循环；
+        // 没有一次性动作 ⇒ 当前写姿态的就是呼吸，直接归位，别冻在半口气上。
+        if (this._oneShot !== '') return;
+        const dog = this._dogNode;
+        if (dog == null) return;
+        dog.setPosition(0, 0, 0);
+        dog.setRotationFromEuler(0, 0, 0);
+        dog.setScale(1, 1, 1);
+    }
+
+    /** 冰晶碎了：解冻并立刻接回呼吸（`PlayCrystalBreak` 在砸中的那一帧调） */
+    public Unfreeze(): void
+    {
+        this._setFrozen(false, true);
     }
 
     /**
@@ -659,7 +718,10 @@ export class DogNode extends Component {
     /** 换关 / 槽位被复用 / 破冰之后，把两个覆盖层一起收掉 */
     public ClearOverlays(): void
     {
-        this.ShowCrystal(false);
+        if (this.crystalIcon != null && this.crystalIcon.node != null)
+            this.crystalIcon.node.active = false;
+        // 静默解冻：换关时这只狗马上就要 PlayBorn，不该先起一次呼吸再被顶掉
+        this._setFrozen(false, false);
         this.HideHammer();
     }
 

@@ -54,6 +54,7 @@ export class DoorNode extends Component {
         // `start()` 一辈子只跑一次，但仍按工程惯例先 off 再 on（幂等，将来被手动调也不怕）。
         this.adsBtn.node.off(Button.EventType.CLICK, this.onAdsUnlock, this);
         this.adsBtn.node.on(Button.EventType.CLICK, this.onAdsUnlock, this);
+        this.RfreshDoorSprite();
     }
 
     /**
@@ -75,7 +76,6 @@ export class DoorNode extends Component {
         // CreateWithColor 内部会把 doorState 置成 Idle 并刷新 dogIcon / 车门开合，
         // 顺带把 adsBtn 关掉（走 RefreshLock 的那条判据）—— 这里不用再手动摆状态。
         this.CreateWithColor(doorColor);
-
         // ⚠️ 必须补一次盘面扫描：解锁可能让某根**已经集满、却一直等不到门**的椅子立刻能飞。
         // 不补的话要等玩家下一步棋才动（`CheckDogFlyToCar` 只有两个调用点，
         // 见 level_tools/verify_level_loop.py 第 14 项那段注释）。
@@ -96,6 +96,7 @@ export class DoorNode extends Component {
         this.doorState = DoorState.Idle;
         this.dogIcon.node.active = this.waitDogColor != DogColor.None;
         this.RfreshDogSprite();
+        this.RefreshLock();
     }
 
     public async RfreshDogSprite()
@@ -213,5 +214,6 @@ export class DoorNode extends Component {
         // 判据见 level_tools/verify_level_loop.py 第 11 项。
         this.openCarIcon.node.active = true;
         this.closeCarIcon.node.active = false;
+        this.RfreshDoorSprite();
     }
 }

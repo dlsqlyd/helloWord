@@ -575,8 +575,8 @@ export class GameMainObj extends Component {
      * 开局生成配对并套上覆盖层。`start()` 里**铺完盘之后**调。
      *
      * 数据（谁被冻住、谁抱锤子）在 `GameDataManager.flags` 里，这里只负责画。
-     * 少于 4 种颜色的关卡不会出对（见 GenerateCrystalPairs 的分档），
-     * 所以第 5~14 关调用进来也是空转 —— 这是规则本身决定的，不是没接上。
+     * 少于 3 种颜色的关卡不会出对（见 GenerateCrystalPairs 的分档），
+     * 3 色关卡（第 5~14 关）有一半概率是 0 对 —— 这是规则本身决定的，不是没接上。
      */
     public ApplyCrystalPairs(): void
     {
@@ -664,11 +664,22 @@ export class GameMainObj extends Component {
         const pair: CrystalPair = gdm.GetUnbrokenPairByHolderColor(dog.DogColor);
         if (pair == null) return;
 
-        // 世界坐标必须在狗被派去飞车门**之前**取（FlyToCar 里 0.3s 后就起飞了）
-        const fromWorld: Vec3 = gdm.LocalToWorld(dog.node.parent, dog.node.position);
-        // 狗身上那把锤子立刻收掉，免得"飞出去的锤子"和"狗身上还挂着一把"同屏
-        dog.HideHammer();
-        this.PlayHammerBreak(pair, fromWorld);
+        // 狗**先带着锤子飞一段**（FlyToCar 里 0.3s 后才真正起飞），锤子再脱手。
+        // 立刻收掉的话，画面上是"狗跑了、锤子凭空消失"，玩家根本看不到"它抱着锤子"。
+        // 这里先留一份备用坐标：万一 0.34s 后那只狗已经被回收，仍然要能把冰晶敲开 ——
+        // 敲不开这一对就永久锁死，那根椅子永远飞不了。
+        const fallback: Vec3 = gdm.LocalToWorld(dog.node.parent, dog.node.position);
+        const cfgRef: LevelConfig = gdm.curLevelConfig;
+        this.scheduleOnce(() => {
+            // 0.34s 内换关的话，盘面已经换了一批节点 —— 别拿旧关卡的一对去砸新关卡
+            if (gdm.curLevelConfig !== cfgRef) return;
+            const alive: boolean = dog != null && dog.node != null && dog.node.active;
+            const fromWorld: Vec3 = alive
+                ? gdm.LocalToWorld(dog.node.parent, dog.node.position)
+                : fallback;
+            if (alive) dog.HideHammer();
+            this.PlayHammerBreak(pair, fromWorld);
+        }, 0.34);
     }
 
     /**
@@ -684,6 +695,8 @@ export class GameMainObj extends Component {
 
         const crystalDog: DogNode = this.GetDogNodeBySlot(pair.crystalChair, pair.crystalSlot);
         const sf: SpriteFrame = await DogNode.LoadHammerFrame(pair.crystalColor);
+        // 等图期间可能已经换关（crystalPairs 会被重建）—— 旧关卡的一对就别再动了
+        if (gdm.crystalPairs.indexOf(pair) < 0) return;
         if (crystalDog == null || !crystalDog.node.active || sf == null)
         {
             // 冰晶狗不在了（理论上不该发生）也别把这一对卡住：直接按已破处理
@@ -692,27 +705,60 @@ export class GameMainObj extends Component {
             return;
         }
 
+        // 锤子挂在一个"握柄轴"节点上：Sprite 放进子节点、整体挪开 grip 偏移，
+        // 旋转轴就搬到了**手握的位置**。
+        // 为什么不能直接转贴图中心：锤头离贴图中心只有 14px，绕着中心转等于让锤子
+        // 原地打转（头几乎不动、柄在甩）—— 这正是上一版"没有往下砸的感觉"的原因。
+        // 绕握柄转，锤头离轴 45px，才会扫出一道真正的圆弧。
         const fly: Node = new Node("hammerFly");
         fly.layer = this.node.layer;
         this.node.addChild(fly);
         fly.setSiblingIndex(this.node.children.length - 1);
-        const ut: UITransform = fly.addComponent(UITransform);
+
+        const spNode: Node = new Node("hammerSprite");
+        spNode.layer = fly.layer;
+        fly.addChild(spNode);
+        spNode.setPosition(-GameMainObj.HAMMER_GRIP_X, -GameMainObj.HAMMER_GRIP_Y, 0);
         // 与 DogNode.prefab 里 hammer 覆盖层的尺寸一致（84×84，见 ice_src/add_overlay_nodes.py）
-        ut.setContentSize(84, 84);
-        const sp: Sprite = fly.addComponent(Sprite);
+        spNode.addComponent(UITransform).setContentSize(84, 84);
+        const sp: Sprite = spNode.addComponent(Sprite);
         sp.sizeMode = Sprite.SizeMode.CUSTOM;
         sp.spriteFrame = sf;
 
         const from: Vec3 = gdm.WorldToLocal(this.node, fromWorld);
         const toWorld: Vec3 = gdm.LocalToWorld(crystalDog.node.parent, crystalDog.node.position);
         const to: Vec3 = gdm.WorldToLocal(this.node, toWorld);
-        fly.setPosition(from);
 
-        // 抛物线：先抬到两点上方，再砸下去
-        const mid: Vec3 = new Vec3((from.x + to.x) / 2, Math.max(from.y, to.y) + 90, 0);
+        // 起点 = 狗身上覆盖层的中心 (14,-26) + 握柄偏移 —— 脱手的那一帧锤子不会"跳"。
+        fly.setPosition(from.x + GameMainObj.HAMMER_HOLD_X + GameMainObj.HAMMER_GRIP_X,
+                        from.y + GameMainObj.HAMMER_HOLD_Y + GameMainObj.HAMMER_GRIP_Y, 0);
+
+        // 抱在怀里的姿态 = 覆盖层的 -10°（prefab 里就是这么歪着放的）
+        fly.angle = GameMainObj.HAMMER_ANG_HELD;
+
+        // 轨迹：抛到两点上方 → 滑到冰晶正上方 → **举起来蓄力** → 抡下去 → 触底回弹。
+        // 总时长约 1.03s（旧版 0.4s，用户反馈"飞得太快"）。
+        //
+        // ⚠️ 这里摆的是**握柄**，但玩家看的是**锤头**落在哪。所以每个关键帧都先定
+        // "锤头要到哪"，再反算握柄该放哪（PivotForHead）—— 直接按握柄摆的话，
+        // 锤头会永远差一个锤身，砸不到冰晶上。
+        const arc: Vec3 = new Vec3((from.x + to.x) / 2, Math.max(from.y, to.y) + 110, 0);
+        const pAbove: Vec3 = GameMainObj.PivotForHead(to.x, to.y + 118, GameMainObj.HAMMER_ANG_ABOVE, new Vec3());
+        const pWind: Vec3 = GameMainObj.PivotForHead(to.x + 6, to.y + 152, GameMainObj.HAMMER_ANG_WIND, new Vec3());
+        const pHit: Vec3 = GameMainObj.PivotForHead(to.x, to.y + 20, GameMainObj.HAMMER_ANG_HIT, new Vec3());
+        const pRest: Vec3 = GameMainObj.PivotForHead(to.x, to.y + 32, GameMainObj.HAMMER_ANG_HIT + 5, new Vec3());
+
         tween(fly)
-            .to(0.22, { position: mid, eulerAngles: new Vec3(0, 0, 160) }, { easing: 'sineOut' })
-            .to(0.18, { position: to, eulerAngles: new Vec3(0, 0, 340) }, { easing: 'sineIn' })
+            .to(0.46, { position: arc, angle: GameMainObj.HAMMER_ANG_FLY }, { easing: 'sineOut' })
+            .to(0.24, { position: pAbove, angle: GameMainObj.HAMMER_ANG_ABOVE }, { easing: 'sineInOut' })
+            // 举起来：握柄再往上抬 30 多像素、锤头朝天 —— 给玩家"要砸了"的预告
+            .to(0.16, { position: pWind, angle: GameMainObj.HAMMER_ANG_WIND }, { easing: 'sineOut' })
+            // 抡下去：0.11s 转 176°（-34° → -210°），锤头从朝天一路扫到朝下
+            .to(0.11, { position: pHit, angle: GameMainObj.HAMMER_ANG_HIT - 6, scale: new Vec3(1.12, 1.12, 1) },
+                { easing: 'quadIn' })
+            // 触底回弹：角度收 5°、锤头抬 12px，砸下去那一下才有"吃到力"的手感
+            .to(0.06, { position: pRest, angle: GameMainObj.HAMMER_ANG_HIT + 2, scale: new Vec3(1, 1, 1) },
+                { easing: 'sineOut' })
             .call(() => {
                 fly.destroy();
                 gdm.BreakCrystal(pair);
@@ -721,9 +767,69 @@ export class GameMainObj extends Component {
             .start();
     }
 
+    // ------------------------------------------------------------ 锤子飞行动画的几何
+    //
+    // 锤子图是"头朝上、柄朝下"再整体歪 **-24°** 烘出来的（见 ice_src/build_assets.py
+    // 里那句 `rotate(-24 64 64)`），所以锤头**不在正上方**，而是偏左上 24°：
+    // 角度为 0 时锤头方向是 114°。按"锤头朝上 = 90°"去算角度，锤子会整把歪 24°，
+    // 这就是上一版"砸下去朝向没对"的根因。
+    /** 角度 0 时锤头方向（度） */
+    private static readonly HAMMER_HEAD_BASE: number = 114;
+    /**
+     * 握柄轴 → 锤头中心的距离（px）。
+     * 84×84 显示尺寸下按贴图 alpha 实测：锤头中心在轴 +13.7px、握柄在轴 -31.5px，
+     * 所以两者相距 45px。见 ice_src/preview_hammer_swing.py。
+     */
+    private static readonly HAMMER_HEAD_DIST: number = 45;
+
+    /**
+     * 贴图中心 → 握柄（旋转轴）的偏移。Sprite 挂在子节点上时往反方向挪这么多，
+     * 就等于把轴搬到手握的位置。
+     */
+    private static readonly HAMMER_GRIP_X: number = 12.8;
+    private static readonly HAMMER_GRIP_Y: number = -28.8;
+
+    /** 覆盖层相对狗的位置 */
+    private static readonly HAMMER_HOLD_X: number = 14;
+    private static readonly HAMMER_HOLD_Y: number = -26;
+
+    /** 抱在怀里（= prefab 里 hammer 节点的角度） */
+    private static readonly HAMMER_ANG_HELD: number = -10;
+    /** 飞行途中：略微前倾，看得出是被"带着走"的 */
+    private static readonly HAMMER_ANG_FLY: number = 14;
+    /** 悬在冰晶正上方：锤头基本朝天 */
+    private static readonly HAMMER_ANG_ABOVE: number = -2;
+    /** 蓄力：锤头朝天并往右后仰 */
+    private static readonly HAMMER_ANG_WIND: number = -34;
+    /**
+     * 砸中：-210° ⇒ 锤头方向 114-210 = -96°，即**几乎垂直朝下**。
+     * 用 -210 而不是 +150（两者视觉等价），是为了让 tween 从 -34 一路**递减**过去，
+     * 旋转方向始终一致（顺时针抡下来）；跨 ±180 回绕会让中间帧反向抽一下。
+     */
+    private static readonly HAMMER_ANG_HIT: number = -210;
+
+    /** 角度 a 时，锤头中心相对**握柄轴**的偏移 */
+    private static HeadOffset(a: number, out: Vec3): Vec3
+    {
+        const rad: number = (GameMainObj.HAMMER_HEAD_BASE + a) * Math.PI / 180;
+        return out.set(GameMainObj.HAMMER_HEAD_DIST * Math.cos(rad),
+                       GameMainObj.HAMMER_HEAD_DIST * Math.sin(rad), 0);
+    }
+
+    /** 想让**锤头**落在 (x, y)，握柄轴该放哪 */
+    private static PivotForHead(x: number, y: number, a: number, out: Vec3): Vec3
+    {
+        const off: Vec3 = GameMainObj.HeadOffset(a, new Vec3());
+        return out.set(x - off.x, y - off.y, 0);
+    }
+
     /** 冰晶碎裂：弹一下 + 淡出，然后按数据重画（这时冰晶格已经恢复成普通格） */
     private PlayCrystalBreak(dog: DogNode): void
     {
+        // 砸中的这一帧就解冻：玩家要看到"冰一碎，狗立刻又开始喘气"。
+        // 不能等 0.24s 淡出结束后的 RefreshCrystalOverlays —— 那样会晚半拍。
+        if (dog != null) dog.Unfreeze();
+
         const c: Sprite = dog != null ? dog.crystalIcon : null;
         const n: Node = c != null ? c.node : null;
         if (n == null)
@@ -753,6 +859,28 @@ export class GameMainObj extends Component {
             .start();
     }
 
+    /**
+     * 把"这只狗抱不抱锤子"复制到它的**动画拷贝**（AnimDog）上。
+     *
+     * 为什么要单独做：选中椅子时抬起来的是 `NoUsedDogs` 池子里的另一只节点，
+     * 它跟槽位上的那只**不是同一个对象**，锤子是挂在槽位那只身上的。
+     * 不复制的话，玩家会看到"槽位上的狗抱着锤子，抬到半空的那只却空着手"，
+     * 接着飞向别的椅子、落地之后锤子又冒出来 —— 中间断了一截。
+     */
+    private CopyHammerOverlay(animDog: DogNode, chairId: number, slot: number, color: DogColor): void
+    {
+        const gdm: GameDataManager = GameDataManager.instance;
+        if (animDog == null || gdm == null) return;
+        if (gdm.GetSlotFlag(chairId, slot) != SlotFlag.Hammer)
+        {
+            animDog.HideHammer();
+            return;
+        }
+        const pair: CrystalPair = gdm.GetUnbrokenPairByHolderColor(color);
+        if (pair != null) animDog.ShowHammer(pair.crystalColor);
+        else animDog.HideHammer();
+    }
+
     PlayHoverUpByRoomId(roomId:number) 
     {
         let roomNode = this.GetRoomNode(roomId);
@@ -768,6 +896,10 @@ export class GameMainObj extends Component {
         let newpos:Vec3 = GameDataManager.instance.WorldToLocal(freeDog.node.parent, out);
         freeDog.node.position = newpos;
         freeDog.CreateDog(roomNode.sleepDogColor, -1);
+        // 窝里这只如果抱着锤子，悬浮的拷贝也得抱上（见 CopyHammerOverlay）
+        const roomHammer: number = GameDataManager.instance.GetHammerColorInRoom(roomId);
+        if (roomHammer >= 0) freeDog.ShowHammer(roomHammer);
+        else freeDog.HideHammer();
         freeDog.PlayHoverUp();
     }
 
@@ -801,6 +933,8 @@ export class GameMainObj extends Component {
                 let newpos:Vec3 = GameDataManager.instance.WorldToLocal(freeDog.node.parent, out);
                 freeDog.node.position = newpos;
                 freeDog.CreateDog(dogNode.DogColor, -1);
+                // 抱锤子的狗被抬起来时，锤子也要跟到这只拷贝上
+                this.CopyHammerOverlay(freeDog, chairId, i, dogNode.DogColor);
                 freeDog.PlayHoverUp();
             }
             else
@@ -976,6 +1110,9 @@ export class GameMainObj extends Component {
                         sendNode[i].DogColor = DogColor.None;
                         sendNode[i].DogState = DogState.None;
                         GameDataManager.instance.isCanClick = true;
+                        // 落地的这只狗刚被 CreateDog 清过覆盖层（见 DogNode.CreateDog）——
+                        // 它要是抱锤子的那只，锤子得马上补回来，否则会空手到下次重画
+                        this.RefreshCrystalOverlays();
                         if (i == 0)
                         {
                             callback();

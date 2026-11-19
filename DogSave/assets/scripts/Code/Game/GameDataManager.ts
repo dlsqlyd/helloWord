@@ -350,7 +350,7 @@ export class GameDataManager implements IManager {
     //
     // 一关的配对是**开局随机**的（不是关卡表里写死的），规则：
     //   · 从第 CRYSTAL_START_LEVEL 关开始才生成；
-    //   · 盘面颜色总数 >3 / >5 / >7 时，分别随机 0~1 / 1~2 / 2~3 对；
+    //   · 盘面颜色总数 ≥3 / ≥5 / ≥7 时，分别随机 0~1 / 1~2 / 2~3 对；
     //   · 每一对 = 一只被冰晶盖住的狗 + 一只抱锤子的狗：
     //       锤子颜色 == 冰晶狗的颜色，而抱锤子那只狗**自己的颜色 ≠ 冰晶狗的颜色**；
     //   · 所有对之间颜色互不重复（两两取色，天然不撞）；
@@ -510,12 +510,14 @@ export class GameDataManager implements IManager {
         let colors: number[] = Array.from(spots.keys());
         let n: number = colors.length;
 
-        // 2) 颜色总数决定"这一关出几对"
+        // 2) 颜色总数决定"这一关出几对"（判据是 **≥**，不是 >）
+        //    ≥7 色 → 2~3 对   ≥5 色 → 1~2 对   ≥3 色 → 0~1 对
+        //    也就是说第 5 关（3 色）起就有机会见到，只是 50% 概率是 0 对。
         let minPair: number = 0, maxPair: number = 0;
-        if (n > 7) { minPair = 2; maxPair = 3; }
-        else if (n > 5) { minPair = 1; maxPair = 2; }
-        else if (n > 3) { minPair = 0; maxPair = 1; }
-        else return 0;   // ≤3 色不出（第 5~14 关就是这一档）
+        if (n >= 7) { minPair = 2; maxPair = 3; }
+        else if (n >= 5) { minPair = 1; maxPair = 2; }
+        else if (n >= 3) { minPair = 0; maxPair = 1; }
+        else return 0;   // 1~2 色的关卡凑不出一对（一只要冻、一只要抱锤子，还得不同色）
 
         let want: number = minPair + Math.floor(Math.random() * (maxPair - minPair + 1));
         // 一对要吃掉两个颜色，别超过颜色总数的一半
