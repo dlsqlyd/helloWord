@@ -622,8 +622,8 @@ export class GameDataManager implements IManager {
         //    ≥7 色 → 2~3 对   ≥5 色 → 1~2 对   ≥3 色 → 0~1 对
         //    也就是说第 5 关（3 色）起就有机会见到，只是 50% 概率是 0 对。
         let minPair: number = 0, maxPair: number = 0;
-        if (n >= 7) { minPair = 2; maxPair = 3; }
-        else if (n >= 5) { minPair = 1; maxPair = 2; }
+        if (n >= 7) { minPair = 1; maxPair = 2; }
+        else if (n >= 5) { minPair = 1; maxPair = 1; }
         else if (n >= 3) { minPair = 0; maxPair = 1; }
         else return 0;   // 1~2 色的关卡凑不出一对（一只要冻、一只要抱锤子，还得不同色）
 
