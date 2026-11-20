@@ -146,16 +146,9 @@ export class GameMainObj extends Component {
             doorNode.RefreshLock();
         }
 
-        for (let i = 0; i < this.doorNodes.length; i++)
-        {
-            let doorNode:DoorNode = this.doorNodes[i];
-            if (doorNode.doorState == DoorState.Idle)
-            {
-                // 随机一个盘面上有的颜色（不与另一扇门重复）
-                let doorColor:DogColor = this.GetRandomDoorColor();
-                doorNode.CreateWithColor(doorColor);
-            }
-        }
+        // ⚠️ 门色的随机**不在这里**，挪到 `ApplyCrystalPairs()` 之后了。
+        //    原因：门色要避开"被冰晶挡住的颜色"、还要优先取"抱锤子的狗的颜色"，
+        //    这两条都得等冰晶/锤子配对生成完才知道。见下面那段（`start()` 末尾）。
 
         for (let i = 0; i < this.roomNodes.length; i++)
         {
@@ -256,6 +249,23 @@ export class GameMainObj extends Component {
         //    而 flags 数组是这里现建的（关卡表里没有这个字段，见 LevelChairData.flags）。
         //    放在 RefreshAllSlot 之前也不会崩，只是会在还没建好的 flags 上写标记。
         this.ApplyCrystalPairs();
+
+        // 门色：**一定**要在冰晶/锤子配对生成之后（上面这一句）。
+        //   · 要排除"被冰晶挡住的颜色"（那种狗在冰晶碎之前搬不出来，门等它就是空等）；
+        //   · 要优先取"抱锤子的狗的颜色"（门等锤子色 ⇒ 玩家为了送狗必然去消锤子狗
+        //     ⇒ 锤子飞出去砸冰晶 ⇒ 被挡住的狗跟着放开，这是这玩法的正循环）。
+        //   两条都依赖 crystalPairs，所以只能排在这里。
+        for (let i = 0; i < this.doorNodes.length; i++)
+        {
+            let doorNode:DoorNode = this.doorNodes[i];
+            if (doorNode == null) continue;
+            if (doorNode.doorState == DoorState.Idle)
+            {
+                let doorColor:DogColor = this.GetRandomDoorColor();
+                doorNode.CreateWithColor(doorColor);
+            }
+        }
+
         for (let i = 0; i < this.UsingdDogs.length; i++)
         {
             let dog = this.UsingdDogs[i];
@@ -553,15 +563,21 @@ export class GameMainObj extends Component {
     
 
     /**
-     * **随机**挑一个颜色，给一扇 Idle 的门当"它在等的颜色"。
+     * 给一扇 Idle 的门挑"它在等的颜色"。
      *
-     * 规则（按最初那条注释的意图实现 —— 名字和意图终于一致了）：
-     *   1) 候选池 = **盘面上出现过的颜色**（同一颜色多只只算一次）。
-     *      必须是"盘面上有的颜色"：门等一个谁都凑不出来的颜色就是死局。
-     *   2) 避重：剔掉**其它正在收狗的门**（Idle / Open）已经等着的颜色，
-     *      于是两扇 Idle 门拿到不同颜色；`lockIndex=1` 时只有一扇门，自然不重复。
-     *      Lock 门不参与避重 —— 它的 `waitDogColor` 是 `None`(=0)，不是真实颜色。
-     *   3) 剩下的候选里**等概率随机**选一个。
+     * ⚠️ 必须在 `ApplyCrystalPairs()` **之后**调（开局在 `start()` 末尾、跑关在 `FlyToCar` 回调里）。
+     *    规则里有两条依赖 `crystalPairs`，早于配对生成就等于没做。
+     *
+     * 真正的选色在 `GameDataManager.PickDoorColor()`（放数据层是为了能离线测）：
+     *   1) 候选 = 盘面上出现过的颜色；
+     *   2) 剔掉**被冰晶挡住的颜色** —— 那些狗冰晶碎之前搬不出来，门等它们就是纯空等；
+     *   3) 剔掉**其它正在收狗的门**已经等着的颜色；
+     *   4) **优先抱锤子的狗的颜色** —— 门等锤子色，玩家为了送狗就必然去消锤子狗，
+     *      锤子飞出去砸冰晶，被挡住的狗跟着放开。这是这玩法的正循环。
+     *
+     * 这里只负责从门节点上收集"要避开的颜色"。
+     * ⚠️ 正在被重新配色的那扇门**要先把 `waitDogColor` 清成 None**（见 `FlyToCar`），
+     *    否则它会把自己上一轮的颜色也排除掉，白白少一个候选。
      *
      * ⚠️ 随机之后门色不再确定 ⇒ 离线判据必须按"门色取遍所有可能"来验。
      *    `level_tools/verify_level_loop.py` 第 8 项已改成 for-all 模型
@@ -569,43 +585,21 @@ export class GameMainObj extends Component {
      */
     GetRandomDoorColor() : DogColor
     {
-        // let cfg:LevelConfig = GameDataManager.instance.curLevelConfig;
+        let gdm: GameDataManager = GameDataManager.instance;
+        if (gdm == null) return DogColor.None;
 
-        // // 1) 盘面上出现过的颜色（去重）
-        // let onBoard:number[] = [];
-        // for (let i = 0; i < cfg.chairs.length; i++)
-        // {
-        //     let list = cfg.chairs[i].dogs;
-        //     for (let j = 0; j < list.length; j++)
-        //     {
-        //         let c:number = list[j];
-        //         if (c > 0 && onBoard.indexOf(c) < 0) onBoard.push(c);
-        //     }
-        // }
-        // if (onBoard.length <= 0) return DogColor.None;
-
-        // // 2) 避重：剔掉其它"正在收狗"的门已经等着的颜色
-        // let candidates:number[] = [];
-        // for (let i = 0; i < onBoard.length; i++)
-        // {
-        //     let used = false;
-        //     for (let k = 0; k < this.doorNodes.length; k++)
-        //     {
-        //         let d = this.doorNodes[k];
-        //         if (d == null) continue;
-        //         if (d.doorState != DoorState.Idle && d.doorState != DoorState.Open) continue;
-        //         if (d.waitDogColor == onBoard[i]) { used = true; break; }
-        //     }
-        //     if (!used) candidates.push(onBoard[i]);
-        // }
-        // // 兜底：颜色全被别的门占完了（例如盘面上只有 1 种颜色却有 2 扇门）。
-        // // 这时候宁可和别的门重复，也不能返回 None —— None 的门谁都匹配不上，
-        // // 玩家就再也飞不走任何一根椅子了。
-        // if (candidates.length <= 0) candidates = onBoard;
-
-        // let idx:number = Math.floor(Math.random() * candidates.length);
-        // return candidates[idx] as DogColor;
-        return this.GetFirstChairBottomColor();
+        let exclude:number[] = [];
+        for (let k = 0; k < this.doorNodes.length; k++)
+        {
+            let d = this.doorNodes[k];
+            if (d == null) continue;
+            if (d.doorState != DoorState.Idle && d.doorState != DoorState.Open) continue;
+            if (d.waitDogColor == DogColor.None) continue;
+            if (exclude.indexOf(d.waitDogColor) >= 0) continue;
+            exclude.push(d.waitDogColor);
+        }
+        return gdm.PickDoorColor(exclude) as DogColor;
+        // return this.GetFirstChairBottomColor();
     }
 
 
@@ -1347,6 +1341,10 @@ export class GameMainObj extends Component {
         // 现在是空转 —— 它们从来没被关过。留着不动，幂等。
         this.scheduleOnce(() => {
             chairNode.node.active = false;
+            // ⚠️ 先把自己上一轮的颜色清掉再抽：`GetRandomDoorColor` 会把
+            //    "Idle / Open 的门正在等的颜色"当成要避开的颜色，而此刻这扇门
+            //    正好是 Open、还带着旧色 ⇒ 不清就等于强制换色（白白少一个候选）。
+            toDoor.waitDogColor = DogColor.None;
             let doorColor:DogColor = this.GetRandomDoorColor();
             toDoor.CreateWithColor(doorColor);
             GameDataManager.instance.isCanClick = true;

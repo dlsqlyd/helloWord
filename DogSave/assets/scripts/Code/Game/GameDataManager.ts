@@ -410,6 +410,113 @@ export class GameDataManager implements IManager {
     }
 
     /**
+     * 某只狗"挡住"的颜色 = 同一根椅子、在它**下面**（下标更小）的那些狗的颜色。
+     *
+     * 冰晶狗不能移动也不能被消除，叠放规则又是"从顶上取同色一段"，
+     * 所以这些颜色在冰晶碎掉之前是搬不出来的。
+     * 生成配对时用它保证：抱锤子的颜色绝不会落在里面（否则锤子狗永远消不掉）。
+     */
+    public GetBlockedColors(chairIdx: number, slotIdx: number): Set<number>
+    {
+        let out: Set<number> = new Set<number>();
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null || chairIdx < 0 || chairIdx >= cfg.chairs.length) return out;
+        let dogs: number[] = cfg.chairs[chairIdx].dogs;
+        if (dogs == null) return out;
+        let top: number = Math.min(slotIdx, dogs.length);
+        for (let j = 0; j < top; j++)
+        {
+            if (dogs[j] > 0) out.add(dogs[j]);
+        }
+        return out;
+    }
+
+    /**
+     * 场上**所有**还没敲碎的冰晶"挡住"的颜色合集（跨对累加）。
+     *
+     * 这些颜色的狗在冰晶碎掉之前搬不出来 ⇒ 门**不应该**等它们：
+     * 门等一个凑不出来的颜色，玩家只能干等倒计时归零。
+     * 同理，重排 / 加时这些道具也不该指望它们。
+     */
+    public GetAllBlockedColors(): Set<number>
+    {
+        let out: Set<number> = new Set<number>();
+        for (let i = 0; i < this.crystalPairs.length; i++)
+        {
+            let p: CrystalPair = this.crystalPairs[i];
+            if (p == null || p.broken) continue;
+            if (!this.IsSlotCrystal(p.crystalChair, p.crystalSlot)) continue;
+            this.GetBlockedColors(p.crystalChair, p.crystalSlot).forEach((c: number) => out.add(c));
+        }
+        return out;
+    }
+
+    /**
+     * 门（卡车位）该等什么颜色。**必须在 `GenerateCrystalPairs()` 之后调。**
+     *
+     * 规则（按优先级）：
+     *   1) 候选 = 盘面上出现过的颜色；
+     *   2) 剔掉 `GetAllBlockedColors()` —— 那些狗压在冰晶下面，冰晶碎之前搬不出来，
+     *      门等它们就是纯空等；
+     *   3) 剔掉 `exclude`（其它正在收狗的门已经等着的颜色，由调用方从门节点上收集）；
+     *   4) **优先抱锤子的狗的颜色**：门等锤子色 ⇒ 玩家为了送狗必然去消锤子狗
+     *      ⇒ 锤子飞出去砸冰晶 ⇒ 被挡住的狗跟着放开。这是这玩法的正循环。
+     *
+     * 每一层都有兜底（下一层空了就退回上一层），**绝不会返回 0**：
+     * 返回 `None` 的门谁都匹配不上，玩家就再也飞不走任何一根椅子了。
+     */
+    public PickDoorColor(exclude: number[]): number
+    {
+        let cfg: LevelConfig = this.curLevelConfig;
+        if (cfg == null || cfg.chairs == null) return 0;
+
+        let onBoard: number[] = [];
+        for (let i = 0; i < cfg.chairs.length; i++)
+        {
+            let list: number[] = cfg.chairs[i].dogs;
+            if (list == null) continue;
+            for (let j = 0; j < list.length; j++)
+            {
+                let c: number = list[j];
+                if (c > 0 && onBoard.indexOf(c) < 0) onBoard.push(c);
+            }
+        }
+        if (onBoard.length <= 0) return 0;
+
+        // 2) 冰晶挡住的颜色出局
+        let blocked: Set<number> = this.GetAllBlockedColors();
+        let usable: number[] = [];
+        for (let i = 0; i < onBoard.length; i++)
+        {
+            if (!blocked.has(onBoard[i])) usable.push(onBoard[i]);
+        }
+        if (usable.length <= 0) usable = onBoard;
+
+        // 3) 其它门已经等着的颜色出局
+        let candidates: number[] = [];
+        for (let i = 0; i < usable.length; i++)
+        {
+            if (exclude != null && exclude.indexOf(usable[i]) >= 0) continue;
+            candidates.push(usable[i]);
+        }
+        if (candidates.length <= 0) candidates = usable;
+
+        // 4) 优先锤子色
+        let preferred: number[] = [];
+        let pairs: CrystalPair[] = this.GetUsablePairs();
+        for (let i = 0; i < pairs.length; i++)
+        {
+            let c: number = pairs[i].holderColor;
+            if (candidates.indexOf(c) < 0) continue;
+            if (preferred.indexOf(c) >= 0) continue;
+            preferred.push(c);
+        }
+
+        let pool: number[] = preferred.length > 0 ? preferred : candidates;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    /**
      * 这根椅子上有没有还没被敲碎的冰晶。
      * 有 ⇒ 整根椅子**不许飞向卡车**（"六个同色里有一个被盖住，整椅都不能消除"）。
      */
@@ -603,26 +710,26 @@ export class GameDataManager implements IManager {
         if (cfg == null) return 0;
         if (this.curFightLevelId < GameDataManager.CRYSTAL_START_LEVEL) return 0;
 
-        // 1) 颜色 -> 这只颜色所有狗的位置
-        let spots: Map<number, { chair: number, slot: number }[]> = new Map();
+        // 1) 盘面上所有还活着的狗（chair/slot/color），以及有几种颜色
+        let all: { chair: number, slot: number, color: number }[] = [];
+        let colorSet: Set<number> = new Set<number>();
         for (let i = 0; i < cfg.chairs.length; i++)
         {
             let dogs: number[] = cfg.chairs[i].dogs;
             for (let j = 0; j < dogs.length; j++)
             {
                 if (dogs[j] <= 0) continue;
-                if (!spots.has(dogs[j])) spots.set(dogs[j], []);
-                spots.get(dogs[j]).push({ chair: i, slot: j });
+                all.push({ chair: i, slot: j, color: dogs[j] });
+                colorSet.add(dogs[j]);
             }
         }
-        let colors: number[] = Array.from(spots.keys());
-        let n: number = colors.length;
+        let n: number = colorSet.size;
 
         // 2) 颜色总数决定"这一关出几对"（判据是 **≥**，不是 >）
-        //    ≥7 色 → 2~3 对   ≥5 色 → 1~2 对   ≥3 色 → 0~1 对
+        //    ≥7 色 → 1~2 对   ≥5 色 → 1~1 对   ≥3 色 → 0~1 对
         //    也就是说第 5 关（3 色）起就有机会见到，只是 50% 概率是 0 对。
         let minPair: number = 0, maxPair: number = 0;
-        if (n >= 7) { minPair = 1; maxPair = 2; }
+        if (n >= 7) { minPair = 1; maxPair = 1; }
         else if (n >= 5) { minPair = 1; maxPair = 1; }
         else if (n >= 3) { minPair = 0; maxPair = 1; }
         else return 0;   // 1~2 色的关卡凑不出一对（一只要冻、一只要抱锤子，还得不同色）
@@ -633,58 +740,110 @@ export class GameDataManager implements IManager {
         if (want > cap) want = cap;
         if (want <= 0) return 0;
 
-        // 3) 颜色洗一遍，两两取 ⇒ 天然满足"每对之间颜色不重复"
-        let pool: number[] = colors.slice();
-        for (let i = pool.length - 1; i > 0; i--)
+        // 3) 组对：**先随机冰晶，再随机锤子**，锤子的颜色不能是"被这只冰晶挡住的颜色"。
+        //
+        //    ⚠️ 为什么要卡这一条（死锁的来源）：
+        //    冰晶狗不能移动、也不能被消除，叠放规则又是"从顶上取同色一段"，
+        //    所以它**下面**那些狗（下标更小的）在冰晶碎掉之前永远出不来。
+        //    如果锤子狗和水晶下面某只狗同色，那这几种同色狗就被永久扣在椅子底下，
+        //    锤子狗永远凑不齐"六只同色"，也就永远不会被消除 ⇒ 锤子永远飞不出去 ⇒
+        //    冰晶永远敲不碎。这就是用户说的"死循环"。
+        //    只要锤子颜色 ≠ 冰晶挡住的任一颜色，锤子狗就一定是能正常搬 / 消的。
+        //
+        //    流程（一"回合"）：
+        //      ① 随机挑一只还没被占用的狗当冰晶；
+        //      ② 算出它挡住的颜色（同椅、下标比它小的那些）；
+        //      ③ 随机挑一只颜色合法、椅子没被占用的狗抱锤子；
+        //      ④ 挑不到 ⇒ 回到 ① 重来。**连续 3 回合**都挑不到 ⇒ 放弃这一对。
+        let plan: { cc: number, cs: number, ccol: number, hc: number, hs: number, hcol: number }[] = [];
+
+        for (let attempt = 0; attempt < 8; attempt++)
         {
-            let k: number = Math.floor(Math.random() * (i + 1));
-            let t: number = pool[i]; pool[i] = pool[k]; pool[k] = t;
+            plan = [];
+            const usedChairs: Set<number> = new Set<number>();
+            const usedColors: Set<number> = new Set<number>();
+            // 这两个集合必须**跨对累加**，否则两对之间还能互相等：
+            // A 的冰晶压着 hB、B 的锤子又正好是 hB ⇒ A 要等 B 碎、B 要等 A 碎，还是死锁。
+            const blockedColors: Set<number> = new Set<number>();   // 已经被某只冰晶压住、出不来的颜色
+            const holderColors: Set<number> = new Set<number>();    // 已经派出去抱锤子的颜色
+
+            for (let p = 0; p < want; p++)
+            {
+                let got: { cc: number, cs: number, ccol: number,
+                           hc: number, hs: number, hcol: number } = null;
+
+                for (let round = 0; round < 3 && got == null; round++)
+                {
+                    // ① 随机冰晶（椅子、颜色都不能和已经排好的对撞；
+                    //    也不能压住"已经派出去抱锤子"的颜色，否则就是跨对死锁）
+                    let cCand: { chair: number, slot: number, color: number }[] = [];
+                    for (let i = 0; i < all.length; i++)
+                    {
+                        let d = all[i];
+                        if (usedChairs.has(d.chair)) continue;
+                        if (usedColors.has(d.color)) continue;
+
+                        let pre: Set<number> = this.GetBlockedColors(d.chair, d.slot);
+                        let conflict: boolean = false;
+                        pre.forEach((c: number) => { if (holderColors.has(c)) conflict = true; });
+                        if (conflict) continue;
+
+                        cCand.push(d);
+                    }
+                    if (cCand.length <= 0) break;      // 连候选都没有，这一对没戏
+                    let cs = cCand[Math.floor(Math.random() * cCand.length)];
+
+                    // ② 这只冰晶"挡住"的狗 = 同一根椅子、在它下面（下标更小）的那些
+                    let blocked: Set<number> = this.GetBlockedColors(cs.chair, cs.slot);
+
+                    // ③ 随机锤子：不同色、不在被挡住的颜色里、不同椅、没被占用
+                    let hCand: { chair: number, slot: number, color: number }[] = [];
+                    for (let i = 0; i < all.length; i++)
+                    {
+                        let d = all[i];
+                        if (d.color == cs.color) continue;
+                        if (blocked.has(d.color)) continue;
+                        if (blockedColors.has(d.color)) continue;
+                        if (usedColors.has(d.color)) continue;
+                        if (d.chair == cs.chair || usedChairs.has(d.chair)) continue;
+                        hCand.push(d);
+                    }
+                    if (hCand.length <= 0) continue;   // ④ 这一回合没配上，换一只冰晶重来
+
+                    let hs = hCand[Math.floor(Math.random() * hCand.length)];
+                    got = { cc: cs.chair, cs: cs.slot, ccol: cs.color,
+                            hc: hs.chair, hs: hs.slot, hcol: hs.color };
+                }
+                if (got == null) break;   // 连续 3 回合挑不到 ⇒ 放弃这一对，不再往下加
+
+                usedChairs.add(got.cc);
+                usedChairs.add(got.hc);
+                usedColors.add(got.ccol);
+                usedColors.add(got.hcol);
+                holderColors.add(got.hcol);
+                this.GetBlockedColors(got.cc, got.cs).forEach((c: number) => blockedColors.add(c));
+                plan.push(got);
+            }
+
+            // 这一轮已经够最低对数就不用再重排；不够（比如只排到 0 对但要求 ≥1）就重来一轮
+            if (plan.length >= minPair) break;
         }
 
-        let made: number = 0;
-        // ⚠️ 已经用掉的椅子。**冰晶椅和抱锤子椅都算**，而且跨对共享。
-        //
-        // 不共享会锁死，举个真实会发生的例子（两对）：
-        //   对A：冰晶在椅 X、锤子在椅 Y     对B：冰晶在椅 Y、锤子在椅 X
-        //   ⇒ X 被对A的冰晶挡着、飞不了，对B的锤子（在 X）永远等不到被消除；
-        //     Y 被对B的冰晶挡着、飞不了，对A的锤子（在 Y）也一样 ⇒ 两根椅子互锁，死局。
-        // 顺带也排掉了"同一根椅子上蹲着两只抱锤子的狗"（那种情况下
-        // `GetHammerSlot` 只能报一只，另一把锤子会被漏掉、那一对永远敲不碎）。
-        const usedChairs: Set<number> = new Set<number>();
-
-        for (let p = 0; p + 1 < pool.length && made < want; p += 2)
+        // 5) 落标记
+        for (let i = 0; i < plan.length; i++)
         {
-            let crystalColor: number = pool[p];
-            let holderColor: number = pool[p + 1];
-
-            // 冰晶狗：这只颜色里、椅子还没被占用的任意一只
-            let cSpots = spots.get(crystalColor);
-            if (cSpots == null || cSpots.length <= 0) continue;
-            let cCand = cSpots.filter(s => !usedChairs.has(s.chair));
-            if (cCand.length <= 0) continue;
-            let cs = cCand[Math.floor(Math.random() * cCand.length)];
-
-            // 抱锤子的狗：椅子也不能已被占用（含 cs 自己那根）
-            let hSpots = spots.get(holderColor);
-            if (hSpots == null) continue;
-            let candidates = hSpots.filter(s => s.chair != cs.chair && !usedChairs.has(s.chair));
-            if (candidates.length <= 0) continue;
-            let hs = candidates[Math.floor(Math.random() * candidates.length)];
-
-            this.SetSlotFlag(cs.chair, cs.slot, SlotFlag.Crystal);
-            this.SetSlotFlag(hs.chair, hs.slot, SlotFlag.Hammer);
-            usedChairs.add(cs.chair);
-            usedChairs.add(hs.chair);
+            let it = plan[i];
+            this.SetSlotFlag(it.cc, it.cs, SlotFlag.Crystal);
+            this.SetSlotFlag(it.hc, it.hs, SlotFlag.Hammer);
 
             let pair: CrystalPair = new CrystalPair();
-            pair.crystalChair = cs.chair;
-            pair.crystalSlot = cs.slot;
-            pair.crystalColor = crystalColor;
-            pair.holderColor = holderColor;
+            pair.crystalChair = it.cc;
+            pair.crystalSlot = it.cs;
+            pair.crystalColor = it.ccol;
+            pair.holderColor = it.hcol;
             this.crystalPairs.push(pair);
-            made++;
         }
-        return made;
+        return plan.length;
     }
 
     /** 按"抱锤子那只狗的颜色"找还没被敲碎的那一对 */
@@ -1412,9 +1571,11 @@ export class GameDataManager implements IManager {
         if (fromColor == 0)
             return false;
 
-        // ①-b 椅子顶上压着冰晶 ⇒ 整根椅子搬不动。
-        //     注意判的是**最顶上那只**：冰晶狗下面的狗本来也搬不出来（被它压着），
-        //     所以只要顶上是冰晶，这一手就完全走不了。
+        // ①-b 顶上就是冰晶 ⇒ 这只冰晶自己搬不动，这一手走不了。
+        //     冰晶可以出现在椅子的任意一层（GenerateCrystalPairs 随机挑），
+        //     它一旦露在顶上，这根椅子就彻底搬不动了 —— 直到锤子把它敲碎。
+        //     它下面压着的狗同样出不来，所以生成时会保证**锤子狗的颜色 ≠ 它挡住的任一颜色**，
+        //     否则锤子狗永远消不掉、冰晶永远敲不碎（死锁）。
         if (fromTopSlot >= 0 && this.IsSlotCrystal(fromIndx, fromTopSlot))
             return false;
 
